@@ -72,6 +72,7 @@ class UserRead(UserBase):
     bmr: int
     tdee: int
     goal_calories: int
+    credentials: UserCredentialsRead
 
     class Config:
         from_attributes = True
@@ -87,8 +88,9 @@ class PortionCreate(PortionBase):
 
 
 class PortionUpdate(PortionBase):
+    id: Optional[int] = None
     name: Optional[str] = None
-    weight_in_grams: Optional[str] = None
+    weight_in_grams: Optional[float] = None
 
 
 class PortionRead(PortionBase):
@@ -118,11 +120,12 @@ class FoodUpdate(FoodBase):
     carbohydrates: Optional[float] = None
     proteins: Optional[float] = None
     fats: Optional[float] = None
+    portions: Optional[List[PortionUpdate]] = []
 
 
 class FoodRead(FoodBase):
     id: int
-    portions: Optional[Union[PortionRead, List[PortionRead]]] = None
+    portions: Optional[List[PortionRead]] = None
 
     class Config:
         from_attributes = True
@@ -148,18 +151,29 @@ class ServingUpdate(ServingBase):
 
 class ServingRead(ServingBase):
     id: int
-    user_id: int
+    consumed_calories: float
     food: FoodRead
     portion: PortionRead
-
 
     class Config:
         from_attributes = True
 
+    
+class UserDailySummaryResponse(BaseModel):
+    target_calories: int
+    current_calories: int
+    daily_calories_progress: int
+    carbohydrates: int
+    proteins: int
+    fats: int
+
 
 class DailyServingsResponse(BaseModel):
-    total_calories: float
     servings_by_meal_type: Dict[MealTypes, List[ServingRead]]
+
+
+class FinishDayResponse(BaseModel):
+    message: str
 
 
 @app.get("/")
@@ -227,16 +241,10 @@ def update_user(user_id: int, user_data: UserUpdate, db: Session = Depends(get_d
         user_db.activity_level = user_data.activity_level
     if user_data.goal_type is not None:
         user_db.goal_type = user_data.goal_type
-    
-    if user_data.email is not None or user_data.password is not None:
-        credentials_db = db.query(UserCredentials).filter(UserCredentials.user_id == user_id).first()
-        if credentials_db is not None:
-            if user_data.email is not None:
-                credentials_db.email = user_data.email
-            if user_data.password is not None:
-                credentials_db.hash_and_set_password(user_data.password)
-
-            db.refresh(credentials_db)
+    if user_data.email is not None:
+        user_db.credentials.email = user_data.email
+    if user_data.password is not None:
+        user_db.credentials.password = user_data.password
     
     db.commit()
     db.refresh(user_db)
@@ -244,18 +252,18 @@ def update_user(user_id: int, user_data: UserUpdate, db: Session = Depends(get_d
     return user_db
 
 
-@app.delete("/users/{user_id}", response_model=UserRead)
+@app.delete("/users/{user_id}", response_model=Dict[str, str])
 def delete_user(user_id: int, db: Session = Depends(get_db)):
     user_db = db.query(User).filter(User.id == user_id).first()
     if user_db is None:
         raise HTTPException(status_code=404, detail="User not found")
     db.delete(user_db)
     db.commit()
-    return user_db
+    return {"message": "User deleted successfully"}
 
 
-@app.get("/users/{user_id}/daily-servings", response_model=DailyServingsResponse)
-def get_daily_servings(user_id: int, day: date, db: Session = Depends(get_db)):
+@app.get("/users/{user_id}/summary", response_model=UserDailySummaryResponse)
+def get_user_daily_summary(user_id: int, day: date, db: Session = Depends(get_db)):
     user_db = db.query(User).filter(User.id == user_id).first()
     if user_db is None:
         raise HTTPException(status_code=404, detail="User not found")
@@ -265,19 +273,68 @@ def get_daily_servings(user_id: int, day: date, db: Session = Depends(get_db)):
         func.date(Serving.consumed_at) == day
     ).all()
 
-    total_calories = 0.0
+    current_calories = 0.0
+    carbohydrates = 0.0
+    proteins = 0.0
+    fats = 0.0
+
+    for serving in query:
+        current_calories += serving.quantity * serving.portion.calories
+        carbohydrates += serving.quantity * serving.portion.carbohydrates
+        proteins += serving.quantity * serving.portion.proteins
+        fats += serving.quantity * serving.portion.fats
+
+    return {
+        "target_calories": user_db.goal_calories,
+        "current_calories": round(current_calories),
+        "daily_calories_progress": round(current_calories / user_db.goal_calories * 100),
+        "carbohydrates": round(carbohydrates),
+        "proteins": round(proteins),
+        "fats": round(fats)
+    }
+
+
+@app.get("/users/{user_id}/servings", response_model=DailyServingsResponse)
+def get_servings_by_user_id(user_id: int, day: date, db: Session = Depends(get_db)):
+    user_db = db.query(User).filter(User.id == user_id).first()
+    if user_db is None:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    query = db.query(Serving).filter(
+        Serving.user_id == user_id,
+        func.date(Serving.consumed_at) == day
+    ).all()
+
     servings_by_meal_type = {meal_type: [] for meal_type in MealTypes}
 
     for serving in query:
-        total_calories += serving.quantity * serving.portion.calories
         servings_by_meal_type[serving.meal_type].append(serving)
 
-    result = {
-        "total_calories": total_calories,
-        "servings_by_meal_type": servings_by_meal_type
-    }
+    return {"servings_by_meal_type": servings_by_meal_type}
 
-    return result
+
+@app.get("/users/{user_id}/finish-day", response_model=FinishDayResponse)
+def finish_day(user_id: int, day: date, db: Session = Depends(get_db)):
+    user_db = db.query(User).filter(User.id == user_id).first()
+    if user_db is None:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    query = db.query(Serving).filter(
+        Serving.user_id == user_id,
+        func.date(Serving.consumed_at) == day
+    ).all()
+
+    current_calories = 0.0
+
+    for serving in query:
+        current_calories += serving.quantity * serving.portion.calories
+
+    if current_calories < user_db.goal_calories:
+        return {"message": "You have not reached your goal calories for today. However, you can still eat more!"}
+    elif current_calories > user_db.goal_calories:
+        return {"message": "You have exceeded your goal calories for today. Be careful with your diet!"}
+    else:
+        return {"message": "Congratulations! You have reached your goal calories for today!"}
 
 
 @app.post("/foods", response_model=FoodRead)
@@ -289,34 +346,23 @@ def create_food(food: FoodCreate, current_user: UserRead = Depends(get_current_u
         carbohydrates=food.carbohydrates,
         proteins=food.proteins,
         fats=food.fats,
-        user_id=current_user.id
+        user_id=current_user.id,
+        portions=[]
     )
 
     db.add(food_db)
+    db.flush()
+
+    for portion in food.portions:
+        portion_db = Portion(
+            name=portion.name,
+            weight_in_grams=portion.weight_in_grams,
+            food_id=food_db.id
+        )
+        food_db.portions.append(portion_db)
+
     db.commit()
     db.refresh(food_db)
-
-    if food.portions is not None:
-        for portion in food.portions:
-            portion_db = Portion(
-                name=portion.name,
-                weight_in_grams=portion.weight_in_grams,
-                food_id=food_db.id
-            )
-
-            db.add(portion_db)
-            db.commit()
-
-        db.refresh(food_db)
-
-    print(food_db.id)
-    print(food_db.name)
-    print(food_db.description)
-    print(food_db.calories)
-    print(food_db.carbohydrates)
-    print(food_db.proteins)
-    print(food_db.fats)
-    print(food_db.portions)
 
     return food_db
 
@@ -365,6 +411,26 @@ def update_food(food_id: int, food_data: FoodUpdate, db: Session = Depends(get_d
         food_db.proteins = food_data.proteins
     if food_data.fats is not None:
         food_db.fats = food_data.fats
+
+    if food_data.portions is not None:
+        for portion_data in food_data.portions:
+            if portion_data.id is not None:
+                portion_db = db.query(Portion).filter(Portion.id == portion_data.id).first()
+                if portion_db is None:
+                    raise HTTPException(status_code=404, detail="Portion not found")
+
+                if portion_data.name is not None:
+                    portion_db.name = portion_data.name
+                if portion_data.weight_in_grams is not None:
+                    portion_db.weight_in_grams = portion_data.weight_in_grams
+            else:
+                portion_db = Portion(
+                    name=portion_data.name,
+                    weight_in_grams=portion_data.weight_in_grams,
+                    food_id=food_db.id
+                )
+                db.add(portion_db)
+                food_db.portions.append(portion_db)
     
     db.commit()
     db.refresh(food_db)
@@ -372,14 +438,14 @@ def update_food(food_id: int, food_data: FoodUpdate, db: Session = Depends(get_d
     return food_db
 
 
-@app.delete("/foods/{food_id}", response_model=FoodRead)
+@app.delete("/foods/{food_id}", response_model=Dict[str, str])
 def delete_food(food_id: int, db: Session = Depends(get_db)):
     food_db = db.query(Food).filter(Food.id == food_id).first()
     if food_db is None:
         raise HTTPException(status_code=404, detail="Food not found")
     db.delete(food_db)
     db.commit()
-    return food_db
+    return {"message": "Food deleted successfully"}
 
 
 @app.post("/portions", response_model=PortionRead)
@@ -391,7 +457,6 @@ def create_portion(portion_data: PortionCreate, db: Session = Depends(get_db)):
     portion = Portion(
         name=portion_data.name,
         weight_in_grams=portion_data.weight_in_grams,
-        calories=portion_data.calories,
         food_id=portion_data.food_id
     )
 
@@ -425,8 +490,6 @@ def update_portion(portion_id: int, portion_data: PortionUpdate, db: Session = D
         portion_db.name = portion_data.name
     if portion_data.weight_in_grams is not None:
         portion_db.weight_in_grams = portion_data.weight_in_grams
-    if portion_data.calories is not None:
-        portion_db.calories = portion_data.calories
 
     db.commit()
     db.refresh(portion_db)
@@ -434,14 +497,14 @@ def update_portion(portion_id: int, portion_data: PortionUpdate, db: Session = D
     return portion_db
 
 
-@app.delete("/portions/{portion_id}", response_model=PortionRead)
+@app.delete("/portions/{portion_id}", response_model=Dict[str, str])
 def delete_portion(portion_id: int, db: Session = Depends(get_db)):
     portion_db = db.query(Portion).filter(Portion.id == portion_id).first()
     if portion_db is None:
         raise HTTPException(status_code=404, detail="Portion not found")
     db.delete(portion_db)
     db.commit()
-    return portion_db
+    return {"message": "Portion deleted successfully"}
 
 
 @app.post("/servings", response_model=ServingRead)

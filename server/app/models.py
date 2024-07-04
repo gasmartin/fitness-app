@@ -1,5 +1,6 @@
 import hashlib
 from datetime import datetime
+from typing import List
 
 from sqlalchemy import DateTime, Enum, ForeignKey
 from sqlalchemy.orm import Mapped, declarative_base, mapped_column, relationship
@@ -33,9 +34,10 @@ class User(TimestampMixin, Base):
     # User's goal
     goal_type: Mapped[GoalTypes] = mapped_column(Enum(GoalTypes), nullable=False)
 
-    credentials: Mapped["UserCredentials"] = relationship("UserCredentials", uselist=False, backref="user", cascade="all, delete-orphan")
-    servings: Mapped["Serving"] = relationship("Serving", backref="user", cascade="all, delete-orphan")
-    foods: Mapped["Food"] = relationship("Food", backref="food", cascade="all, delete-orphan")
+    credentials: Mapped["UserCredentials"] = relationship(back_populates="user", cascade="all, delete-orphan")
+    
+    foods: Mapped[List["Food"]] = relationship(back_populates="user", cascade="all, delete-orphan")
+    servings: Mapped[List["Serving"]] = relationship(back_populates="user", cascade="all, delete-orphan")
 
     @property
     def bmr(self) -> int:
@@ -93,6 +95,7 @@ class UserCredentials(TimestampMixin, Base):
     hashed_password: Mapped[str] = mapped_column(nullable=False)
 
     user_id: Mapped[int] = mapped_column(ForeignKey("users.id"))
+    user: Mapped["User"] = relationship(back_populates="credentials")
 
     def hash_and_set_password(self, password: str) -> str:
         self.hashed_password = hashlib.sha256(password.encode()).hexdigest()
@@ -117,9 +120,10 @@ class Food(TimestampMixin, Base):
     fats: Mapped[float] = mapped_column(nullable=False)  # Fats per 100g
 
     user_id: Mapped[int] = mapped_column(ForeignKey("users.id"))
+    user: Mapped["User"] = relationship(back_populates="foods")
 
-    portions: Mapped["Portion"] = relationship("Portion", backref="food", cascade="all, delete-orphan")
-    servings: Mapped["Serving"] = relationship("Serving", backref="food", cascade="all, delete-orphan")
+    portions: Mapped[List["Portion"]] = relationship(back_populates="food", cascade="all, delete-orphan")
+    servings: Mapped[List["Serving"]] = relationship(back_populates="food", cascade="all, delete-orphan")
 
     def __repr__(self) -> str:
         return f"<Food id={self.id} name={self.name} description={self.description} calories={self.calories} carbohydrates={self.carbohydrates} proteins={self.proteins} fats={self.fats}>"
@@ -134,12 +138,25 @@ class Portion(TimestampMixin, Base):
     weight_in_grams: Mapped[float] = mapped_column(nullable=False)
 
     food_id: Mapped[int] = mapped_column(ForeignKey("foods.id"))
+    food: Mapped["Food"] = relationship(back_populates="portions")
 
-    servings: Mapped["Serving"] = relationship("Serving", backref="portion", cascade="all, delete-orphan")
+    servings: Mapped[List["Serving"]] = relationship(back_populates="portion", cascade="all, delete-orphan")
 
     @property
     def calories(self) -> float:
         return self.weight_in_grams * self.food.calories / 100
+
+    @property
+    def carbohydrates(self) -> float:
+        return self.weight_in_grams * self.food.carbohydrates / 100
+
+    @property
+    def proteins(self) -> float:
+        return self.weight_in_grams * self.food.proteins / 100
+
+    @property
+    def fats(self) -> float:
+        return self.weight_in_grams * self.food.fats / 100
 
     def __repr__(self) -> str:
         return f"<Portion id={self.id} name={self.name} weight_in_grams={self.weight_in_grams} calories={self.calories}>"
@@ -160,6 +177,14 @@ class Serving(TimestampMixin, Base):
     user_id: Mapped[int] = mapped_column(ForeignKey("users.id"))
     food_id: Mapped[int] = mapped_column(ForeignKey("foods.id"))
     portion_id: Mapped[int] = mapped_column(ForeignKey("portions.id"))
+
+    user: Mapped["User"] = relationship(back_populates="servings")
+    food: Mapped["Food"] = relationship(back_populates="servings")
+    portion: Mapped["Portion"] = relationship(back_populates="servings")
+
+    @property
+    def consumed_calories(self) -> float:
+        return self.quantity * self.portion.calories
 
     def __repr__(self) -> str:
         return f"<Serving id={self.id} quantity={self.quantity}>"
