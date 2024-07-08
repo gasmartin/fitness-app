@@ -2,6 +2,7 @@ from datetime import datetime, date
 from typing import Dict, List, Optional, Union
 
 from fastapi import Depends, FastAPI, HTTPException, Query
+from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from sqlalchemy import func
 from sqlalchemy.orm import Session
@@ -11,6 +12,19 @@ from app.models import User, UserCredentials, Food, Portion, Serving
 from app.types import ActivityLevelTypes, GenderTypes, GoalTypes, MealTypes
 
 app = FastAPI(title="Fitness app server", version="1.0.0")
+
+origins = [
+    "http://localhost",
+    "http://192.168.25.42:8000",
+]
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=origins,
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 
 def get_db():
@@ -168,10 +182,6 @@ class UserDailySummaryResponse(BaseModel):
     fats: int
 
 
-class DailyServingsResponse(BaseModel):
-    servings_by_meal_type: Dict[MealTypes, List[ServingRead]]
-
-
 class FinishDayResponse(BaseModel):
     message: str
 
@@ -294,7 +304,7 @@ def get_user_daily_summary(user_id: int, day: date, db: Session = Depends(get_db
     }
 
 
-@app.get("/users/{user_id}/servings", response_model=DailyServingsResponse)
+@app.get("/users/{user_id}/servings", response_model=List[Dict[str, Union[MealTypes, List[ServingRead]]]])
 def get_servings_by_user_id(user_id: int, day: date, db: Session = Depends(get_db)):
     user_db = db.query(User).filter(User.id == user_id).first()
     if user_db is None:
@@ -310,7 +320,7 @@ def get_servings_by_user_id(user_id: int, day: date, db: Session = Depends(get_d
     for serving in query:
         servings_by_meal_type[serving.meal_type].append(serving)
 
-    return {"servings_by_meal_type": servings_by_meal_type}
+    return [{"mealType": key, "servings": value} for key, value in servings_by_meal_type.items()]
 
 
 @app.get("/users/{user_id}/finish-day", response_model=FinishDayResponse)

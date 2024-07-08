@@ -21,7 +21,7 @@ class GoalTypes(Enum):
 
 
 class MealTypes(Enum):
-    BREAKFAST = "breakfast"
-    LUNCH = "lunch"
-    DINNER = "dinner"
-    SNACK = "snack"
+    BREAKFAST = "Café da manhã"
+    LUNCH = "Almoço"
+    DINNER = "Jantar"
+    SNACK = "Lanche"
