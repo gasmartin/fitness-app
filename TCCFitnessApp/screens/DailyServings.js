@@ -2,15 +2,9 @@ import React, { useEffect, useState } from 'react';
 import { ActivityIndicator, View, Text, TextInput, Button, StyleSheet, FlatList } from 'react-native';
 import { FAB } from 'react-native-paper';
 import { format, addDays } from 'date-fns';
-
-const fetchWithTimeout = (url, options, timeout = 10000) => {
-  return Promise.race([
-    fetch(url, options),
-    new Promise((_, reject) =>
-      setTimeout(() => reject(new Error('Request timed out')), timeout)
-    ),
-  ]);
-};
+import api from '../axiosConfig';
+import { getMealTypeTranslation } from '../utils/mealTypes';
+import { useFocusEffect } from '@react-navigation/native';
 
 const DailyServings = ({ navigation: { navigate } }) => {
   const [currentDate, setCurrentDate] = useState(new Date());
@@ -27,16 +21,10 @@ const DailyServings = ({ navigation: { navigate } }) => {
     setIsLoading(true);
     try {
       // Fetch servings data from an API
-      const ip = "192.168.25.42";
-      const port = "8000";
-      const response = await fetchWithTimeout(`http://${ip}:${port}/users/1/servings?day=${formattedDate}`, {}, 60000);
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
-      const data = await response.json();
+      const response = await api.get(`/users/1/servings?day=${formattedDate}`);
       setServingsByDate({
         ...servingsByDate,
-        [formattedDate]: data,
+        [formattedDate]: response.data,
       });
     } catch (error) {
       console.error(error);
@@ -49,6 +37,12 @@ const DailyServings = ({ navigation: { navigate } }) => {
       fetchServings();
     }
   }, [currentDate]);
+
+  useFocusEffect(
+    React.useCallback(() => {
+      fetchServings();
+    }, [])
+  );
 
   if (isLoading) {
     return <ActivityIndicator size="large" color="#0000ff" />;
@@ -66,7 +60,7 @@ const DailyServings = ({ navigation: { navigate } }) => {
         keyExtractor={(item) => item.mealType}
         renderItem={({ item }) => (
           <View style={styles.mealContainer}>
-            <Text style={styles.mealType}>{item.mealType}</Text>
+            <Text style={styles.mealType}>{getMealTypeTranslation(item.mealType)}</Text>
             {item.servings.map((serving, index) => (
               <View key={index} style={styles.serving}>
                 <Text style={styles.servingName}>{serving.food.name}</Text>

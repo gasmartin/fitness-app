@@ -1,49 +1,104 @@
 import React, { useState } from 'react';
-import { View, Text, TextInput, Button, StyleSheet } from 'react-native';
-import { Picker } from '@react-native-picker/picker';
+import { View, Text, TextInput, Button, Keyboard, TouchableWithoutFeedback, StyleSheet } from 'react-native';
+import DropDownPicker from 'react-native-dropdown-picker';
+import { format } from 'date-fns';
+import api from '../axiosConfig';
+import { MealTypes, mealTypeItems } from '../utils/mealTypes';
 
-const AddFoodEntry = ({ navigation, route: { params: { food } } }) => {
-    console.log(food.portions);
-    const [portion, setPortion] = useState(food.portions[0]);
+const AddFoodEntry = ({ navigation: { goBack, navigate }, route: { params: { food } } }) => {
+    const { name, description, portions } = food;
+
+    const [mealType, setMealType] = useState(mealTypeItems[0].value);
+    const [portion, setPortion] = useState(portions && portions.length > 0 ? portions[0].id : null);
     const [quantity, setQuantity] = useState("1");
-    console.log(`Selected portion: ${portion.name}`);
 
-    const handleValueChange = (itemValue) => setPortion(itemValue);
+    const [isMealTypeDropdownOpen, setIsMealTypeDropdownOpen] = useState(false);
+    const [isPortionDropdownOpen, setIsPortionDropdownOpen] = useState(false);
+
+    const handleConfirm = async () => {
+        const parsedQuantity = parseFloat(quantity.replace(",", "."));
+
+        const body = {
+            meal_type: mealType,
+            quantity: parsedQuantity,
+            consumed_at: format(new Date(), "yyyy-MM-dd"),
+            user_id: 1,
+            food_id: food.id,
+            portion_id: portion,
+        };
+
+        console.log(body);
+
+        const response = await api.post("/servings", body);
+
+        if (response.status === 200) {
+            navigate("DailyServings");
+        }
+        else {
+            console.error(response);
+        }
+    };
+
+    const handleCancel = () => {
+        goBack();
+    }
+
+    console.log(mealTypeItems);
 
     return (
-        <View style={styles.container}>
-            <View style={styles.header}>
-                <Text style={styles.headerText}>{food.name}</Text>
-                <Text style={styles.headerText}>{food.description}</Text>
+        <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
+            <View style={styles.container}>
+                <View style={styles.header}>
+                    <Text style={styles.headerText}>{name}</Text>
+                    <Text style={styles.headerText}>{description}</Text>
+                </View>
+                <View style={styles.body}>
+                    <Text style={styles.formLabel}>Quantidade:</Text>
+                    <TextInput
+                        value={quantity}
+                        onChangeText={setQuantity}
+                        keyboardType="numeric"
+                        style={styles.input}
+                    />
+                    <Text style={styles.formLabel}>Porção ou unidade:</Text>
+                    <DropDownPicker
+                        open={isPortionDropdownOpen}
+                        setOpen={setIsPortionDropdownOpen}
+                        items={portions.map((item) => ({ label: item.name, value: item.id }))}
+                        value={portion}
+                        setValue={setPortion}
+                        containerStyle={{ height: 40, marginBottom: 20 }}
+                        style={styles.picker}
+                        itemStyle={{
+                            justifyContent: 'flex-start'
+                        }}
+                        dropDownStyle={{ backgroundColor: '#fafafa' }}
+                        zIndex={3000}
+                        zIndexInverse={1000}
+                    />
+                    <Text style={styles.formLabel}>Tipo de refeição:</Text>
+                    <DropDownPicker 
+                        open={isMealTypeDropdownOpen}
+                        setOpen={setIsMealTypeDropdownOpen}
+                        items={mealTypeItems}
+                        value={mealType}
+                        setValue={setMealType}
+                        containerStyle={{ height: 40, marginBottom: 20 }}
+                        style={styles.picker}
+                        itemStyle={{
+                            justifyContent: 'flex-start'
+                        }}
+                        dropDownStyle={{ backgroundColor: '#fafafa' }}
+                        zIndex={2000}
+                        zIndexInverse={2000}
+                    />
+                </View>
+                <View style={styles.footer}>
+                    <Button title="Confirmar" onPress={handleConfirm} />
+                    <Button title="Cancelar" onPress={handleCancel} />
+                </View>
             </View>
-            <View style={styles.body}>
-                <Text>Quantity</Text>
-                <TextInput
-                    value={quantity}
-                    onChangeText={setQuantity}
-                    keyboardType="numeric"
-                    style={styles.input}
-                />
-                <Text>Portion</Text>
-                <Picker
-                    selectedValue={portion}
-                    onValueChange={handleValueChange}
-                    style={styles.picker}
-                    mode={"dropdown"}
-                >
-                    {food.portions.map((item, index) => <Picker.Item key={index} label={item.name} value={item} />)}
-                </Picker>
-                <Picker>
-                    <Picker.Item label="1" value="1" />
-                    <Picker.Item label="2" value="2" />
-                    <Picker.Item label="3" value="3" />
-                </Picker>
-            </View>
-            <View style={styles.footer}>
-                <Button title="Confirmar" onPress={() => navigation.navigate("DailyServings")} />
-                <Button title="Cancelar" onPress={() => navigation.goBack()} />
-            </View>
-        </View>
+        </TouchableWithoutFeedback>
     );
 };
 
@@ -74,7 +129,10 @@ const styles = StyleSheet.create({
         borderColor: 'gray',
         borderWidth: 1,
         paddingHorizontal: 8,
-        marginBottom: 20,
+        marginBottom: 10,
+    },
+    formLabel: {
+        marginVertical: 10,
     },
     footer: {
         flexDirection: 'row',

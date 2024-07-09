@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { View, TextInput, FlatList, Text, ActivityIndicator, StyleSheet, Pressable } from 'react-native';
+import api from '../axiosConfig';
 
 const fetchWithTimeout = (url, options, timeout = 10000) => {
     return Promise.race([
@@ -18,11 +19,8 @@ const FoodSearchResults = ({ navigation: { navigate } }) => {
     const fetchFoodResults = async (query) => {
         setIsLoading(true);
         try {
-            const ip = "192.168.25.42";
-            const port = "8000";
-            const response = await fetchWithTimeout(`http://${ip}:${port}/foods?name=${query}`, {}, 60000);
-            const data = await response.json();
-            setResults(data);
+            const response = await api.get(`/foods?name=${query}`);
+            setResults(response.data);
         } catch (error) {
             console.error(error);
         } finally {
