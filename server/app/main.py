@@ -187,23 +187,6 @@ class FinishDayResponse(BaseModel):
     message: str
 
 
-@app.on_event("startup")
-def on_startup(db: Session = Depends(get_db)):
-    foods = [
-        {
-            "name": "",
-            "description": "",
-            "calories": 0.0,
-            "carbohydrates": 0.0,
-            "proteins": 0.0,
-            "fats": 0.0,
-            "portions": [
-                {}
-            ],
-        }
-    ]
-
-
 @app.get("/")
 async def root():
     return {"message": "Hello World!"}
