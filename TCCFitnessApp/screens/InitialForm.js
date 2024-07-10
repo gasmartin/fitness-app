@@ -1,20 +1,32 @@
 import React, { useRef, useState } from 'react';
 import { View, Text, TextInput, Keyboard, TouchableWithoutFeedback, TouchableOpacity, StyleSheet } from 'react-native';
+import { RadioButton } from 'react-native-paper';
 import DropDownPicker from 'react-native-dropdown-picker';
 
-const InitialForm = ({ navigation: { replace } }) => {
+
+const InitialForm = ({ navigation: { navigate } }) => {
+    const genderInputRef = useRef(null);
     const ageInputRef = useRef(null);
     const heightInputRef = useRef(null);
     const weightInputRef = useRef(null);
-    const activityLevelInputRef = useRef(null);
-    const goalTypeInputRef = useRef(null);
+
+    const [gender, setGender] = useState("M");
+    const [activityLevel, setActivityLevel] = useState("sedentary");
+    const [goalType, setGoalType] = useState("lose_weight");
 
     const [isActivityLevelDropdownOpen, setIsActivityLevelDropdownOpen] = useState(false);
     const [isGoalTypeDropdownOpen, setIsGoalTypeDropdownOpen] = useState(false);
 
     const handleContinue = () => {
-        console.log(ageInputRef.current.value);
-        return ;
+        const age = ageInputRef.current.value;
+        const height = heightInputRef.current.value;
+        const weight = weightInputRef.current.value;
+
+        if (!gender || !age || !height || !weight) {
+            alert("Por favor, preencha todos os campos.");
+            return;
+        }
+
         let parsedHeight = parseFloat(height.replace(",", "."));
 
         if (parsedHeight < 10.0) {
@@ -24,6 +36,7 @@ const InitialForm = ({ navigation: { replace } }) => {
         parsedHeight = parseInt(parsedHeight);
 
         const userInfo = {
+            gender: gender,
             age: parseInt(age),
             height: parsedHeight,
             weight: parseFloat(weight),
@@ -31,9 +44,7 @@ const InitialForm = ({ navigation: { replace } }) => {
             goalType,
         };
 
-        console.log(userInfo);
-
-        replace("Summary", { userInfo });
+        navigate("Summary", { userInfo });
     };
 
     return (
@@ -45,6 +56,45 @@ const InitialForm = ({ navigation: { replace } }) => {
                     </Text>
                 </View>
                 <View style={styles.formContainer}>
+                    {/* <View style={styles.inputContainer}>
+                            <Text style={styles.formLabel}>
+                                Gênero
+                            </Text>
+                            <TextInput
+                                style={styles.smallInput}
+                                placeholder="M ou F"
+                                maxLength={1}
+                                ref={genderInputRef}
+                                onChangeText={(e) => genderInputRef.current.value = e}
+                            />
+                        </View> */}
+                    <Text style={styles.formLabel}>
+                        Gênero
+                    </Text>
+                    <View style={styles.radioButtonGroup}>
+                        <View style={styles.radioButtonContainer}>
+                            <RadioButton
+                                value="M"
+                                status={gender === "M" ? "checked" : "unchecked"}
+                                onPress={() => setGender("M")}
+                                color="#FF6624"
+                            />
+                            <Text style={styles.radioButtonLabel}>
+                                Masculino
+                            </Text>
+                        </View>
+                        <View style={styles.radioButtonContainer}>
+                            <RadioButton
+                                value="F"
+                                status={gender === "F" ? "checked" : "unchecked"}
+                                onPress={() => setGender("F")}
+                                color="#FF6624"
+                            />
+                            <Text style={styles.radioButtonLabel}>
+                                Feminino
+                            </Text>
+                        </View>
+                    </View>
                     <View style={styles.inputContainer}>
                         <Text style={styles.formLabel}>
                             Idade
@@ -84,36 +134,45 @@ const InitialForm = ({ navigation: { replace } }) => {
                             onChangeText={(e) => weightInputRef.current.value = e}
                         />
                     </View>
-                    <View style={styles.inputContainer}>
+                    <View style={[styles.inputContainer, { zIndex: isActivityLevelDropdownOpen ? 3000 : 1000 }]}>
                         <Text style={styles.formLabel}>
                             Nível de atividade física
                         </Text>
                         <DropDownPicker
                             open={isActivityLevelDropdownOpen}
                             setOpen={setIsActivityLevelDropdownOpen}
+                            value={activityLevel}
+                            setValue={setActivityLevel}
                             items={[
                                 { label: "Sedentário", value: "sedentary" },
                                 { label: "Levemente ativo (1 ~ 3 vezes por semana)", value: "lightly_active" },
                                 { label: "Moderadamente ativo (3 ~ 5 vezes por semana)", value: "moderately_active" },
                                 { label: "Muito ativo (6 ~ 7 vezes por semana)", value: "very_active" },
-                                { label: "Extremamente ativo (trabalho árduo, treino de 2 vezes por dia)", value: "extremely_active"}
+                                { label: "Extremamente ativo (trabalho árduo, treino de 2 vezes por dia)", value: "extremely_active" }
                             ]}
+                            style={styles.dropdown}
+                            dropDownContainerStyle={styles.dropdownContainer}
                         />
                     </View>
-                    <View style={styles.inputContainer}>
+                    <View style={[styles.inputContainer, { zIndex: isGoalTypeDropdownOpen ? 3000 : 1000 }]}>
                         <Text style={styles.formLabel}>
                             Meu objetivo é...
                         </Text>
                         <DropDownPicker
                             open={isGoalTypeDropdownOpen}
                             setOpen={setIsGoalTypeDropdownOpen}
+                            value={goalType}
+                            setValue={setGoalType}
                             items={[
                                 { label: "Perder peso", value: "lose_weight" },
                                 { label: "Manter peso", value: "maintain_weight" },
                                 { label: "Ganhar peso", value: "gain_weight" },
                             ]}
+                            style={styles.dropdown}
                         />
                     </View>
+                </View>
+                <View style={styles.buttonContainer}>
                     <TouchableOpacity
                         style={styles.primaryButton}
                         onPress={handleContinue}
@@ -136,7 +195,7 @@ const styles = StyleSheet.create({
     },
     header: {
         width: '100%',
-        height: '20%',
+        height: '18%',
         justifyContent: 'flex-end',
         alignItems: 'center',
     },
@@ -148,12 +207,26 @@ const styles = StyleSheet.create({
     },
     formContainer: {
         width: '100%',
-        height: '80%',
+        flex: 1,
         padding: 10,
+    },
+    radioButtonGroup: {
+        flexDirection: 'row',
+        justifyContent: 'space-around',
+        marginBottom: 16,
+    },
+    radioButtonContainer: {
+        flexDirection: 'row',
+        justifyContent: 'space-around',
+        alignItems: 'center',
+    },
+    radioButtonLabel: {
+        marginLeft: 8,
+        fontSize: 16,
     },
     inputContainer: {
         width: '100%',
-        marginBottom: 20,
+        marginBottom: 12,
     },
     formLabel: {
         fontSize: 20,
@@ -170,6 +243,19 @@ const styles = StyleSheet.create({
         backgroundColor: '#FFFFFF',
         textAlign: 'center',
         fontSize: 16,
+    },
+    dropdownContainer: {
+        zIndex: 3000,
+    },
+    dropdown: {
+        height: 50,
+        borderRadius: 10,
+        backgroundColor: '#FFFFFF',
+        borderColor: '#E0E0E0',
+    },
+    buttonContainer: {
+        width: "100%",
+        height: "10%",
     },
     primaryButton: {
         width: "100%",

@@ -7,17 +7,17 @@ class GenderTypes(Enum):
 
 
 class ActivityLevelTypes(Enum):
-    SEDENTARY = 1.2
-    LIGHT_EXERCISE = 1.375
-    MODERATE_EXERCISE = 1.55
-    HARD_EXERCISE = 1.725
-    ATHLETE = 1.9
+    SEDENTARY = "sedentary"
+    LIGHT_EXERCISE = "lightly_active"
+    MODERATE_EXERCISE = "moderately_active"
+    HARD_EXERCISE = "very_active"
+    EXTREMELY_ACTIVE = "extremely_active"
 
 
 class GoalTypes(Enum):
     LOSE_WEIGHT = "lose_weight"
-    MAINTENANCE = "maintenance"
-    GAIN_MASS = "gain_mass"
+    MAINTAIN_WEIGHT = "maintain_weight"
+    GAIN_WEIGHT = "gain_weight"
 
 
 class MealTypes(Enum):

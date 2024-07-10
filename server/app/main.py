@@ -10,6 +10,7 @@ from sqlalchemy.orm import Session
 from app.database import SessionLocal
 from app.models import User, UserCredentials, Food, Portion, Serving
 from app.types import ActivityLevelTypes, GenderTypes, GoalTypes, MealTypes
+from app.utils import calculate_bmr, calculate_goal_calories, calculate_tdee
 
 app = FastAPI(title="Fitness app server", version="1.0.0")
 
@@ -172,7 +173,7 @@ class ServingRead(ServingBase):
     class Config:
         from_attributes = True
 
-    
+
 class UserDailySummaryResponse(BaseModel):
     target_calories: int
     current_calories: int
@@ -186,6 +187,23 @@ class FinishDayResponse(BaseModel):
     message: str
 
 
+@app.on_event("startup")
+def on_startup(db: Session = Depends(get_db)):
+    foods = [
+        {
+            "name": "",
+            "description": "",
+            "calories": 0.0,
+            "carbohydrates": 0.0,
+            "proteins": 0.0,
+            "fats": 0.0,
+            "portions": [
+                {}
+            ],
+        }
+    ]
+
+
 @app.get("/")
 async def root():
     return {"message": "Hello World!"}
@@ -193,10 +211,12 @@ async def root():
 
 @app.post("/users", response_model=UserRead)
 def create_user(user: UserCreate, db: Session = Depends(get_db)):
-    credentials_db = db.query(UserCredentials).filter(UserCredentials.email == user.email).first()
+    credentials_db = (
+        db.query(UserCredentials).filter(UserCredentials.email == user.email).first()
+    )
     if credentials_db is not None:
         raise HTTPException(status_code=409, detail="Email is already being used!")
-    
+
     credentials_db = UserCredentials(email=user.email)
     credentials_db.hash_and_set_password(password=user.password)
 
@@ -208,7 +228,7 @@ def create_user(user: UserCreate, db: Session = Depends(get_db)):
         weight=user.weight,
         activity_level=ActivityLevelTypes(user.activity_level),
         goal_type=GoalTypes(user.goal_type),
-        credentials=credentials_db
+        credentials=credentials_db,
     )
 
     db.add(user_db)
@@ -236,7 +256,7 @@ def update_user(user_id: int, user_data: UserUpdate, db: Session = Depends(get_d
     user_db = db.query(User).filter(User.id == user_id).first()
     if user_db is None:
         raise HTTPException(status_code=404, detail="User not found")
-    
+
     if user_data.name is not None:
         user_db.name = user_data.name
     if user_data.gender is not None:
@@ -255,7 +275,7 @@ def update_user(user_id: int, user_data: UserUpdate, db: Session = Depends(get_d
         user_db.credentials.email = user_data.email
     if user_data.password is not None:
         user_db.credentials.password = user_data.password
-    
+
     db.commit()
     db.refresh(user_db)
 
@@ -272,16 +292,32 @@ def delete_user(user_id: int, db: Session = Depends(get_db)):
     return {"message": "User deleted successfully"}
 
 
+@app.get("/get-goal-calories-preview", response_model=Dict[str, int])
+def get_goal_calories_preview(
+    gender: str = Query,
+    age: int = Query,
+    height: float = Query,
+    weight: float = Query,
+    activity_level: str = Query,
+    goal_type: str = Query,
+):
+    bmr = calculate_bmr(gender, age, height, weight)
+    tdee = calculate_tdee(bmr, activity_level)
+    goal_calories = calculate_goal_calories(tdee, goal_type)
+    return {"goal_calories": goal_calories}
+
+
 @app.get("/users/{user_id}/summary", response_model=UserDailySummaryResponse)
 def get_user_daily_summary(user_id: int, day: date, db: Session = Depends(get_db)):
     user_db = db.query(User).filter(User.id == user_id).first()
     if user_db is None:
         raise HTTPException(status_code=404, detail="User not found")
 
-    query = db.query(Serving).filter(
-        Serving.user_id == user_id,
-        func.date(Serving.consumed_at) == day
-    ).all()
+    query = (
+        db.query(Serving)
+        .filter(Serving.user_id == user_id, func.date(Serving.consumed_at) == day)
+        .all()
+    )
 
     current_calories = 0.0
     carbohydrates = 0.0
@@ -297,30 +333,39 @@ def get_user_daily_summary(user_id: int, day: date, db: Session = Depends(get_db
     return {
         "target_calories": user_db.goal_calories,
         "current_calories": round(current_calories),
-        "daily_calories_progress": round(current_calories / user_db.goal_calories * 100),
+        "daily_calories_progress": round(
+            current_calories / user_db.goal_calories * 100
+        ),
         "carbohydrates": round(carbohydrates),
         "proteins": round(proteins),
-        "fats": round(fats)
+        "fats": round(fats),
     }
 
 
-@app.get("/users/{user_id}/servings", response_model=List[Dict[str, Union[MealTypes, List[ServingRead]]]])
+@app.get(
+    "/users/{user_id}/servings",
+    response_model=List[Dict[str, Union[MealTypes, List[ServingRead]]]],
+)
 def get_servings_by_user_id(user_id: int, day: date, db: Session = Depends(get_db)):
     user_db = db.query(User).filter(User.id == user_id).first()
     if user_db is None:
         raise HTTPException(status_code=404, detail="User not found")
 
-    query = db.query(Serving).filter(
-        Serving.user_id == user_id,
-        func.date(Serving.consumed_at) == day
-    ).all()
+    query = (
+        db.query(Serving)
+        .filter(Serving.user_id == user_id, func.date(Serving.consumed_at) == day)
+        .all()
+    )
 
     servings_by_meal_type = {meal_type: [] for meal_type in MealTypes}
 
     for serving in query:
         servings_by_meal_type[serving.meal_type].append(serving)
 
-    return [{"mealType": key, "servings": value} for key, value in servings_by_meal_type.items()]
+    return [
+        {"mealType": key, "servings": value}
+        for key, value in servings_by_meal_type.items()
+    ]
 
 
 @app.get("/users/{user_id}/finish-day", response_model=FinishDayResponse)
@@ -329,10 +374,11 @@ def finish_day(user_id: int, day: date, db: Session = Depends(get_db)):
     if user_db is None:
         raise HTTPException(status_code=404, detail="User not found")
 
-    query = db.query(Serving).filter(
-        Serving.user_id == user_id,
-        func.date(Serving.consumed_at) == day
-    ).all()
+    query = (
+        db.query(Serving)
+        .filter(Serving.user_id == user_id, func.date(Serving.consumed_at) == day)
+        .all()
+    )
 
     current_calories = 0.0
 
@@ -340,15 +386,25 @@ def finish_day(user_id: int, day: date, db: Session = Depends(get_db)):
         current_calories += serving.quantity * serving.portion.calories
 
     if current_calories < user_db.goal_calories:
-        return {"message": "You have not reached your goal calories for today. However, you can still eat more!"}
+        return {
+            "message": "You have not reached your goal calories for today. However, you can still eat more!"
+        }
     elif current_calories > user_db.goal_calories:
-        return {"message": "You have exceeded your goal calories for today. Be careful with your diet!"}
+        return {
+            "message": "You have exceeded your goal calories for today. Be careful with your diet!"
+        }
     else:
-        return {"message": "Congratulations! You have reached your goal calories for today!"}
+        return {
+            "message": "Congratulations! You have reached your goal calories for today!"
+        }
 
 
 @app.post("/foods", response_model=FoodRead)
-def create_food(food: FoodCreate, current_user: UserRead = Depends(get_current_user), db: Session = Depends(get_db)):
+def create_food(
+    food: FoodCreate,
+    current_user: UserRead = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
     food_db = Food(
         name=food.name,
         description=food.description,
@@ -357,7 +413,7 @@ def create_food(food: FoodCreate, current_user: UserRead = Depends(get_current_u
         proteins=food.proteins,
         fats=food.fats,
         user_id=current_user.id,
-        portions=[]
+        portions=[],
     )
 
     db.add(food_db)
@@ -367,7 +423,7 @@ def create_food(food: FoodCreate, current_user: UserRead = Depends(get_current_u
         portion_db = Portion(
             name=portion.name,
             weight_in_grams=portion.weight_in_grams,
-            food_id=food_db.id
+            food_id=food_db.id,
         )
         food_db.portions.append(portion_db)
 
@@ -380,10 +436,12 @@ def create_food(food: FoodCreate, current_user: UserRead = Depends(get_current_u
 @app.get("/foods", response_model=List[FoodRead])
 def read_foods(
     name: Optional[str] = Query(None, description="Name of the food to search for"),
-    description: Optional[str] = Query(None, description="Description of the food to search for"),
+    description: Optional[str] = Query(
+        None, description="Description of the food to search for"
+    ),
     skip: int = 0,
     limit: int = 10,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
 ):
     query = db.query(Food)
 
@@ -408,7 +466,7 @@ def update_food(food_id: int, food_data: FoodUpdate, db: Session = Depends(get_d
     food_db = db.query(Food).filter(Food.id == food_id).first()
     if food_db is None:
         raise HTTPException(status_code=404, detail="Food not found")
-    
+
     if food_data.name is not None:
         food_db.name = food_data.name
     if food_data.description is not None:
@@ -425,7 +483,9 @@ def update_food(food_id: int, food_data: FoodUpdate, db: Session = Depends(get_d
     if food_data.portions is not None:
         for portion_data in food_data.portions:
             if portion_data.id is not None:
-                portion_db = db.query(Portion).filter(Portion.id == portion_data.id).first()
+                portion_db = (
+                    db.query(Portion).filter(Portion.id == portion_data.id).first()
+                )
                 if portion_db is None:
                     raise HTTPException(status_code=404, detail="Portion not found")
 
@@ -437,11 +497,11 @@ def update_food(food_id: int, food_data: FoodUpdate, db: Session = Depends(get_d
                 portion_db = Portion(
                     name=portion_data.name,
                     weight_in_grams=portion_data.weight_in_grams,
-                    food_id=food_db.id
+                    food_id=food_db.id,
                 )
                 db.add(portion_db)
                 food_db.portions.append(portion_db)
-    
+
     db.commit()
     db.refresh(food_db)
 
@@ -467,7 +527,7 @@ def create_portion(portion_data: PortionCreate, db: Session = Depends(get_db)):
     portion = Portion(
         name=portion_data.name,
         weight_in_grams=portion_data.weight_in_grams,
-        food_id=portion_data.food_id
+        food_id=portion_data.food_id,
     )
 
     db.add(portion)
@@ -491,7 +551,9 @@ def read_portion(portion_id: int, db: Session = Depends(get_db)):
 
 
 @app.put("/portions/{portion_id}", response_model=PortionRead)
-def update_portion(portion_id: int, portion_data: PortionUpdate, db: Session = Depends(get_db)):
+def update_portion(
+    portion_id: int, portion_data: PortionUpdate, db: Session = Depends(get_db)
+):
     portion_db = db.query(Portion).filter(Portion.id == portion_id).first()
     if portion_db is None:
         raise HTTPException(status_code=404, detail="Portion not found")
@@ -528,7 +590,7 @@ def create_serving(serving_data: ServingCreate, db: Session = Depends(get_db)):
     food = db.query(Food).filter(Food.id == serving_data.food_id).first()
     if not food:
         raise HTTPException(status_code=404, detail="Food not found")
-    
+
     # Check if portion exists
     portion = db.query(Portion).filter(Portion.id == serving_data.portion_id).first()
     if not portion:
@@ -540,7 +602,7 @@ def create_serving(serving_data: ServingCreate, db: Session = Depends(get_db)):
         consumed_at=serving_data.consumed_at,
         user_id=serving_data.user_id,
         food_id=serving_data.food_id,
-        portion_id=serving_data.portion_id
+        portion_id=serving_data.portion_id,
     )
 
     db.add(serving_db)
@@ -564,7 +626,9 @@ def read_serving(serving_id: int, db: Session = Depends(get_db)):
 
 
 @app.put("/servings/{serving_id}", response_model=ServingRead)
-def update_serving(serving_id: int, serving_data: ServingUpdate, db: Session = Depends(get_db)):
+def update_serving(
+    serving_id: int, serving_data: ServingUpdate, db: Session = Depends(get_db)
+):
     serving_db = db.query(Serving).filter(Serving.id == serving_id).first()
     if serving_db is None:
         raise HTTPException(status_code=404, detail="Serving not found")
