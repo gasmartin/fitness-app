@@ -1,15 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { View, TextInput, FlatList, Text, ActivityIndicator, StyleSheet, Pressable } from 'react-native';
-import api from '../axiosConfig';
 
-const fetchWithTimeout = (url, options, timeout = 10000) => {
-    return Promise.race([
-        fetch(url, options),
-        new Promise((_, reject) =>
-            setTimeout(() => reject(new Error('Request timed out')), timeout)
-        ),
-    ]);
-};
+import api from '../axiosConfig';
 
 const FoodSearchResults = ({ navigation: { navigate } }) => {
     const [searchQuery, setSearchQuery] = useState("");
@@ -68,7 +60,7 @@ const FoodSearchResults = ({ navigation: { navigate } }) => {
 const styles = StyleSheet.create({
     container: {
         flex: 1,
-        padding: 16,
+        padding: 42,
     },
     input: {
         height: 40,
