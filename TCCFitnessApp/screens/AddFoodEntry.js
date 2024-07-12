@@ -4,8 +4,10 @@ import DropDownPicker from 'react-native-dropdown-picker';
 import { format } from 'date-fns';
 
 import api from '../axiosConfig';
+import { getToken } from '../helpers/token';
 import { mealTypeItems } from '../utils/mealTypes';
 import { CurrentDateContext } from '../contexts/CurrentDateContext';
+import axios from 'axios';
 
 const AddFoodEntry = ({ navigation: { goBack, navigate }, route: { params: { food } } }) => {
     const { name, description, portions } = food;
@@ -26,18 +28,31 @@ const AddFoodEntry = ({ navigation: { goBack, navigate }, route: { params: { foo
             meal_type: mealType,
             quantity: parsedQuantity,
             consumed_at: format(currentDate, "yyyy-MM-dd"),
-            user_id: 1,
             food_id: food.id,
             portion_id: portion,
         };
 
-        const response = await api.post("/servings", body);
-
-        if (response.status === 200) {
+        try {
+            const token = await getToken();
+            await api.post("/servings", body, {
+                headers: {
+                    Authorization: `Bearer ${token}`
+                },
+            });
             navigate("DailyServings");
         }
-        else {
-            console.error(response);
+        catch (error) {
+            if (axios.isAxiosError(error)) {
+                if (error.response.status === 401) {
+                    navigate("AuthLoading");
+                }
+                else {
+                    console.error(error.response.data);
+                }
+            }
+            else {
+                console.error(error);
+            }
         }
     };
 

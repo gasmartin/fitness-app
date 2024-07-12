@@ -1,8 +1,10 @@
 import React, { useEffect, useState } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, ActivityIndicator } from 'react-native';
+import { CommonActions } from '@react-navigation/native';
 import api from '../axiosConfig';
+import { getToken } from '../helpers/token';
 
-const Summary = ({ navigation: { navigate, replace }, route }) => {
+const Summary = ({ navigation, route }) => {
     const {
         gender,
         age,
@@ -16,16 +18,22 @@ const Summary = ({ navigation: { navigate, replace }, route }) => {
     const [isLoading, setIsLoading] = useState(true);
 
     useEffect(() => {
-        const calculateCalories = async () => {
+        const calculateCalories = async () => {            
             setIsLoading(true);
 
-            const response = await api.get(`/get-goal-calories-preview?gender=${gender}&age=${age}&height=${height}&weight=${weight}&activity_level=${activityLevel}&goal_type=${goalType}`);
+            const token = await getToken();
 
-            if (response.status === 200) {
+            try {
+                const response = await api.get(`/get-goal-calories-preview?gender=${gender}&age=${age}&height=${height}&weight=${weight}&activity_level=${activityLevel}&goal_type=${goalType}`, {
+                    headers: {
+                        Authorization: `Bearer ${token}`
+                    },
+                });
+
                 setGoalCalories(response.data.goal_calories);
             }
-            else {
-                console.error(response);
+            catch (error) {
+                console.error(error);
             }
 
             setIsLoading(false);
@@ -34,12 +42,42 @@ const Summary = ({ navigation: { navigate, replace }, route }) => {
         calculateCalories();
     }, []);
 
-    const handleLetsGo = () => {
-        replace("DailyServings", { userInfo });
+    const handleLetsGo = async () => {
+        setIsLoading(true);
+
+        const body = {
+            gender,
+            age,
+            height,
+            weight,
+            activity_level: activityLevel,
+            goal_type: goalType
+        };
+
+        const token = await getToken();
+
+        try {
+            await api.put("/users/me", body, {
+                headers: {
+                    Authorization: `Bearer ${token}`
+                },
+            });
+            navigation.dispatch(
+                CommonActions.reset({
+                    index: 0,
+                    routes: [{ name: "DailyServings" }],
+                })
+            );
+        }
+        catch (error) {
+            console.error(error);
+        }
+
+        setIsLoading(false);
     };
 
     const handleBack = () => {
-        navigate("InitialForm");
+        navigation.navigate("InitialForm");
     }
 
     const getGoalText = () => {

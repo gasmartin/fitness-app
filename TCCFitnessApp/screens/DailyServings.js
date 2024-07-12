@@ -1,15 +1,17 @@
 import React, { useContext, useEffect, useState } from 'react';
-import { ActivityIndicator, View, Text, TextInput, StyleSheet, TouchableOpacity } from 'react-native';
+import { ActivityIndicator, Alert, View, Text, TextInput, StyleSheet, TouchableOpacity } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import { FAB } from 'react-native-paper';
 import { format, addDays } from 'date-fns';
 
+import axios from 'axios';
 import api from '../axiosConfig';
 import { CurrentDateContext } from '../contexts/CurrentDateContext';
 import ServingList from '../components/ServingList';
+import { getToken } from '../helpers/token';
 
 
-const DailyServings = ({ navigation: { navigate } }) => {
+const DailyServings = ({ navigation }) => {
   const { currentDate, setCurrentDate } = useContext(CurrentDateContext);
 
   const [servingsByDate, setServingsByDate] = useState({});
@@ -25,14 +27,31 @@ const DailyServings = ({ navigation: { navigate } }) => {
     useLoading && setIsLoading(true);
     try {
       // Fetch servings data from an API
-      console.log("Fetching...");
-      const response = await api.get(`/users/1/servings?day=${formattedDate}`);
+      const token = await getToken();
+      const response = await api.get(`/get-daily-servings?day=${formattedDate}`, {
+        headers: {
+          Authorization: `Bearer ${token}`
+        },
+      });
       setServingsByDate({
         ...servingsByDate,
         [formattedDate]: response.data,
       });
     } catch (error) {
-      console.error(error);
+      if (axios.isAxiosError(error)) {
+        if (error.response.status === 404) {
+          setServingsByDate({
+            ...servingsByDate,
+            [formattedDate]: [],
+          });
+        }
+        else if (error.response.status === 401) {
+          navigation.navigate("AuthLoading");
+        }
+      }
+      else {
+        console.error(error);
+      }
     }
     useLoading && setIsLoading(false);
   }
@@ -75,7 +94,7 @@ const DailyServings = ({ navigation: { navigate } }) => {
         icon="plus"
         color="#fff"
         size="medium"
-        onPress={() => navigate("FoodSearchResults")}
+        onPress={() => navigation.navigate("FoodSearchResults")}
       />
     </View>
   );

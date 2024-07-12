@@ -7,7 +7,7 @@ from sqlalchemy.orm import Mapped, declarative_base, mapped_column, relationship
 
 from app.database import engine
 from app.types import ActivityLevelTypes, GenderTypes, GoalTypes, MealTypes
-from app.utils import calculate_bmr, calculate_tdee, calculate_goal_calories
+from app.utils.nutrition import calculate_bmr, calculate_tdee, calculate_goal_calories
 
 Base = declarative_base()
 
@@ -24,24 +24,23 @@ class User(TimestampMixin, Base):
 
     id: Mapped[int] = mapped_column(primary_key=True)
     name: Mapped[str] = mapped_column(nullable=False)
+    email: Mapped[str] = mapped_column(unique=True, nullable=False)
+    hashed_password: Mapped[str] = mapped_column(nullable=False)
+    has_provided_info: Mapped[bool] = mapped_column(nullable=False, default=False)
 
     # Calculate BMR using Harris-Beneidct equation (revised)
-    gender: Mapped[GenderTypes] = mapped_column(Enum(GenderTypes), nullable=False)
-    age: Mapped[int] = mapped_column(nullable=False)
-    height: Mapped[float] = mapped_column(nullable=False)
-    weight: Mapped[float] = mapped_column(nullable=False)
+    gender: Mapped[GenderTypes] = mapped_column(Enum(GenderTypes), nullable=True)
+    age: Mapped[int] = mapped_column(nullable=True)
+    height: Mapped[float] = mapped_column(nullable=True)
+    weight: Mapped[float] = mapped_column(nullable=True)
 
     # Calculate TDEE
     activity_level: Mapped[ActivityLevelTypes] = mapped_column(
-        Enum(ActivityLevelTypes), nullable=False
+        Enum(ActivityLevelTypes), nullable=True
     )
 
     # User's goal
-    goal_type: Mapped[GoalTypes] = mapped_column(Enum(GoalTypes), nullable=False)
-
-    credentials: Mapped["UserCredentials"] = relationship(
-        back_populates="user", cascade="all, delete-orphan"
-    )
+    goal_type: Mapped[GoalTypes] = mapped_column(Enum(GoalTypes), nullable=True)
 
     foods: Mapped[List["Food"]] = relationship(
         back_populates="user", cascade="all, delete-orphan"
@@ -63,28 +62,7 @@ class User(TimestampMixin, Base):
         return calculate_goal_calories(self.tdee, self.goal_type)
 
     def __repr__(self) -> str:
-        return f"<User id={self.id} name={self.name} gender={self.gender} age={self.age} height={self.height} weight={self.weight}>"
-
-
-class UserCredentials(TimestampMixin, Base):
-    __tablename__ = "user_credentials"
-
-    id: Mapped[int] = mapped_column(primary_key=True)
-
-    email: Mapped[str] = mapped_column(unique=True, nullable=False)
-    hashed_password: Mapped[str] = mapped_column(nullable=False)
-
-    user_id: Mapped[int] = mapped_column(ForeignKey("users.id"))
-    user: Mapped["User"] = relationship(back_populates="credentials")
-
-    def hash_and_set_password(self, password: str) -> str:
-        self.hashed_password = hashlib.sha256(password.encode()).hexdigest()
-
-    def check_password(self, password: str) -> bool:
-        return self.hashed_password == hashlib.sha256(password.encode()).hexdigest()
-
-    def __repr__(self) -> str:
-        return f"<UserCredentials email={self.email}>"
+        return f"<User id={self.id} name={self.name} email={self.email}>"
 
 
 class Food(TimestampMixin, Base):

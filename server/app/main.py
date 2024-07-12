@@ -1,16 +1,24 @@
-from datetime import datetime, date
-from typing import Dict, List, Optional, Union
+from datetime import date, datetime, timedelta
+from typing import Any, Dict, List, Optional, Union
 
-from fastapi import Depends, FastAPI, HTTPException, Query
+from fastapi import Depends, FastAPI, HTTPException, Query, status
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
+from jose import JWTError, jwt
 from pydantic import BaseModel
 from sqlalchemy import func
 from sqlalchemy.orm import Session
 
+from app.constants import (
+    ACCESS_TOKEN_EXPIRE_IN_MINUTES,
+    ALGORITHM,
+    SECRET_KEY,
+)
 from app.database import SessionLocal
-from app.models import User, UserCredentials, Food, Portion, Serving
+from app.models import User, Food, Portion, Serving
 from app.types import ActivityLevelTypes, GenderTypes, GoalTypes, MealTypes
-from app.utils import calculate_bmr, calculate_goal_calories, calculate_tdee
+from app.utils.auth import get_password_hash, verify_password
+from app.utils.nutrition import calculate_bmr, calculate_goal_calories, calculate_tdee
 
 app = FastAPI(title="Fitness app server", version="1.0.0")
 
@@ -27,53 +35,13 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-
-def get_db():
-    db = SessionLocal()
-    try:
-        yield db
-    finally:
-        db.close()
-
-
-def get_current_user(db: Session = Depends(get_db)):
-    """
-    Auxiliary method to get the user with ID = 1
-    """
-    return db.query(User).filter(User.id == 1).one()
-
-
-class UserCredentialsBase(BaseModel):
-    email: str
-
-
-class UserCredentialsCreate(UserCredentialsBase):
-    password: str
-
-
-class UserCredentialsRead(UserCredentialsBase):
-    class Config:
-        from_attributes = True
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="login")
 
 
 class UserBase(BaseModel):
     name: str
-    gender: GenderTypes
-    age: int
-    height: float
-    weight: float
-    activity_level: ActivityLevelTypes
-    goal_type: GoalTypes
-
-
-class UserCreate(UserBase, UserCredentialsCreate):
-    pass
-
-
-class UserUpdate(UserBase, UserCredentialsCreate):
-    name: Optional[str] = None
-    email: Optional[str] = None
-    password: Optional[str] = None
+    email: str
+    has_provided_info: bool = False
     gender: Optional[GenderTypes] = None
     age: Optional[int] = None
     height: Optional[float] = None
@@ -82,12 +50,27 @@ class UserUpdate(UserBase, UserCredentialsCreate):
     goal_type: Optional[GoalTypes] = None
 
 
+class UserCreate(UserBase):
+    password: str
+
+
+class UserUpdate(UserCreate):
+    name: Optional[str] = None
+    email: Optional[str] = None
+    password: Optional[str] = None
+
+
+class UserFormData(BaseModel):
+    gender: GenderTypes
+    age: int
+    height: float
+    weight: float
+    activity_level: ActivityLevelTypes
+    goal_type: GoalTypes
+
+
 class UserRead(UserBase):
     id: int
-    bmr: int
-    tdee: int
-    goal_calories: int
-    credentials: UserCredentialsRead
 
     class Config:
         from_attributes = True
@@ -153,7 +136,6 @@ class ServingBase(BaseModel):
 
 
 class ServingCreate(ServingBase):
-    user_id: int
     food_id: int
     portion_id: int
 
@@ -187,38 +169,207 @@ class FinishDayResponse(BaseModel):
     message: str
 
 
+class Token(BaseModel):
+    access_token: str
+    token_type: str
+
+
+def get_db():
+    db = SessionLocal()
+    try:
+        yield db
+    finally:
+        db.close()
+
+
+def create_access_token(data: Dict[str, Any], expires_delta: Optional[timedelta] = None) -> str:
+    to_encode = data.copy()
+    if expires_delta is not None:
+        expire = datetime.utcnow() + expires_delta
+    else:
+        expires_delta = datetime.utcnow() + timedelta(minutes=15)
+    to_encode.update({"exp": expire})
+    encoded_jwt = jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
+    return encoded_jwt
+
+
+async def get_current_user(token: str = Depends(oauth2_scheme), db: Session = Depends(get_db)):
+    credentials_exception = HTTPException(
+        status_code=status.HTTP_401_UNAUTHORIZED,
+        detail="Could not validate credentials",
+        headers={"WWW-Authenticate": "Bearer"},
+    )
+
+    try:
+        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+        email = payload.get("sub")
+        if email is None:
+            raise credentials_exception
+    except JWTError:
+        raise credentials_exception
+
+    user = db.query(User).filter(User.email == email).first()
+    if user is None:
+        raise credentials_exception
+    return user
+
+
+async def get_current_user_with_info(current_user: User = Depends(get_current_user)):
+    if not current_user.has_provided_info:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="User has not provided info")
+    return current_user
+
+
+@app.on_event("startup")
+def register_foods():
+    food_data = [
+        {
+            "name": "Apple",
+            "description": "An apple a day keeps the doctor away.",
+            "calories": 52.0,
+            "carbohydrates": 14.0,
+            "proteins": 0.3,
+            "fats": 0.2,
+            "portions": [
+                {"name": "Small", "weight_in_grams": 100.0},
+                {"name": "Medium", "weight_in_grams": 150.0},
+                {"name": "Large", "weight_in_grams": 200.0},
+            ],
+        },
+        {
+            "name": "Banana",
+            "description": "A banana is an edible fruit – botanically a berry – produced by several kinds of large herbaceous flowering plants in the genus Musa.",
+            "calories": 89.0,
+            "carbohydrates": 23.0,
+            "proteins": 1.1,
+            "fats": 0.3,
+            "portions": [
+                {"name": "Small", "weight_in_grams": 100.0},
+                {"name": "Medium", "weight_in_grams": 150.0},
+                {"name": "Large", "weight_in_grams": 200.0},
+            ],
+        },
+        {
+            "name": "Orange",
+            "description": "The orange is the fruit of various citrus species in the family Rutaceae; it primarily refers to Citrus sinensis, which is also called sweet orange, to distinguish it from the related Citrus aurantium, referred to as bitter orange.",
+            "calories": 47.0,
+            "carbohydrates": 12.0,
+            "proteins": 1.0,
+            "fats": 0.2,
+            "portions": [
+                {"name": "Small", "weight_in_grams": 100.0},
+                {"name": "Medium", "weight_in_grams": 150.0},
+                {"name": "Large", "weight_in_grams": 200.0},
+            ],
+        },
+        {
+            "name": "Grape",
+            "description": "A grape is a fruit, botanically a berry, of the deciduous woody vines of the flowering plant genus Vitis.",
+            "calories": 69.0,
+            "carbohydrates": 18.0,
+            "proteins": 0.7,
+            "fats": 0.2,
+            "portions": [
+                {"name": "Small", "weight_in_grams": 100.0},
+                {"name": "Medium", "weight_in_grams": 150.0},
+                {"name": "Large", "weight_in_grams": 200.0},
+            ],
+        },
+    ]
+
+    db = SessionLocal()
+
+    try:
+        for food in food_data:
+            food_db = Food(
+                name=food["name"],
+                description=food["description"],
+                calories=food["calories"],
+                carbohydrates=food["carbohydrates"],
+                proteins=food["proteins"],
+                fats=food["fats"],
+                user_id=1,
+                portions=[],
+            )
+
+            db.add(food_db)
+            db.flush()
+
+            for portion in food["portions"]:
+                portion_db = Portion(
+                    name=portion["name"],
+                    weight_in_grams=portion["weight_in_grams"],
+                    food_id=food_db.id,
+                )
+                food_db.portions.append(portion_db)
+            
+            db.commit()
+    finally:
+        db.close()
+
+
 @app.get("/")
 async def root():
     return {"message": "Hello World!"}
 
 
-@app.post("/users", response_model=UserRead)
-def create_user(user: UserCreate, db: Session = Depends(get_db)):
-    credentials_db = (
-        db.query(UserCredentials).filter(UserCredentials.email == user.email).first()
+@app.post("/login", response_model=Token)
+async def login(form_data: OAuth2PasswordRequestForm = Depends(), db: Session = Depends(get_db)):
+    print(form_data.username, form_data.password)
+    
+    user_db = db.query(User).filter(User.email == form_data.username).first()
+    if user_db is None or not verify_password(form_data.password, user_db.hashed_password):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Incorrect email or password",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+    access_token_expires = timedelta(minutes=ACCESS_TOKEN_EXPIRE_IN_MINUTES)
+    access_token = create_access_token(
+        data={"sub": user_db.email}, expires_delta=access_token_expires
     )
-    if credentials_db is not None:
-        raise HTTPException(status_code=409, detail="Email is already being used!")
+    return {"access_token": access_token, "token_type": "bearer"}
 
-    credentials_db = UserCredentials(email=user.email)
-    credentials_db.hash_and_set_password(password=user.password)
 
+@app.get("/check-token")
+async def check_token(token: str = Depends(oauth2_scheme)):
+    credentials_exception = HTTPException(
+        status_code=status.HTTP_401_UNAUTHORIZED,
+        detail="Token is invalid or expired",
+        headers={"WWW-Authenticate": "Bearer"},
+    )
+    try:
+        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+        email: str = payload.get("sub")
+        if email is None:
+            raise credentials_exception
+        return {"message": "Token is valid"}
+    except JWTError:
+        raise credentials_exception
+
+
+@app.get("/users/me", response_model=UserRead)
+async def read_users_me(current_user: UserRead = Depends(get_current_user)):
+    return current_user
+
+
+@app.post("/users", response_model=Token)
+def create_user(user: UserCreate, db: Session = Depends(get_db)):
     user_db = User(
         name=user.name,
-        gender=GenderTypes(user.gender),
-        age=user.age,
-        height=user.height,
-        weight=user.weight,
-        activity_level=ActivityLevelTypes(user.activity_level),
-        goal_type=GoalTypes(user.goal_type),
-        credentials=credentials_db,
+        email=user.email,
+        hashed_password=get_password_hash(user.password),
     )
 
     db.add(user_db)
     db.commit()
     db.refresh(user_db)
 
-    return user_db
+    access_token_expires = timedelta(minutes=ACCESS_TOKEN_EXPIRE_IN_MINUTES)
+    access_token = create_access_token(
+        data={"sub": user_db.email}, expires_delta=access_token_expires
+    )
+    return {"access_token": access_token, "token_type": "bearer"}
 
 
 @app.get("/users", response_model=List[UserRead])
@@ -234,35 +385,27 @@ def read_user(user_id: int, db: Session = Depends(get_db)):
     return user_db
 
 
-@app.put("/users/{user_id}", response_model=UserRead)
-def update_user(user_id: int, user_data: UserUpdate, db: Session = Depends(get_db)):
-    user_db = db.query(User).filter(User.id == user_id).first()
-    if user_db is None:
-        raise HTTPException(status_code=404, detail="User not found")
-
-    if user_data.name is not None:
-        user_db.name = user_data.name
+@app.put("/users/me", response_model=UserRead)
+def update_user_info(user_data: UserFormData, current_user: UserRead = Depends(get_current_user), db: Session = Depends(get_db)):
     if user_data.gender is not None:
-        user_db.gender = user_data.gender
+        current_user.gender = user_data.gender
     if user_data.age is not None:
-        user_db.age = user_data.age
+        current_user.age = user_data.age
     if user_data.height is not None:
-        user_db.height = user_data.height
+        current_user.height = user_data.height
     if user_data.weight is not None:
-        user_db.weight = user_data.weight
+        current_user.weight = user_data.weight
     if user_data.activity_level is not None:
-        user_db.activity_level = user_data.activity_level
+        current_user.activity_level = user_data.activity_level
     if user_data.goal_type is not None:
-        user_db.goal_type = user_data.goal_type
-    if user_data.email is not None:
-        user_db.credentials.email = user_data.email
-    if user_data.password is not None:
-        user_db.credentials.password = user_data.password
+        current_user.goal_type = user_data.goal_type
+
+    current_user.has_provided_info = True
 
     db.commit()
-    db.refresh(user_db)
+    db.refresh(current_user)
 
-    return user_db
+    return current_user
 
 
 @app.delete("/users/{user_id}", response_model=Dict[str, str])
@@ -283,6 +426,7 @@ def get_goal_calories_preview(
     weight: float = Query,
     activity_level: str = Query,
     goal_type: str = Query,
+    current_user: UserRead = Depends(get_current_user),
 ):
     bmr = calculate_bmr(gender, age, height, weight)
     tdee = calculate_tdee(bmr, activity_level)
@@ -290,15 +434,11 @@ def get_goal_calories_preview(
     return {"goal_calories": goal_calories}
 
 
-@app.get("/users/{user_id}/summary", response_model=UserDailySummaryResponse)
-def get_user_daily_summary(user_id: int, day: date, db: Session = Depends(get_db)):
-    user_db = db.query(User).filter(User.id == user_id).first()
-    if user_db is None:
-        raise HTTPException(status_code=404, detail="User not found")
-
+@app.get("/get-daily-summary", response_model=UserDailySummaryResponse)
+def get_daily_summary(day: date, current_user: UserRead = Depends(get_current_user_with_info), db: Session = Depends(get_db)):
     query = (
         db.query(Serving)
-        .filter(Serving.user_id == user_id, func.date(Serving.consumed_at) == day)
+        .filter(Serving.user_id == current_user.id, func.date(Serving.consumed_at) == day)
         .all()
     )
 
@@ -314,10 +454,10 @@ def get_user_daily_summary(user_id: int, day: date, db: Session = Depends(get_db
         fats += serving.quantity * serving.portion.fats
 
     return {
-        "target_calories": user_db.goal_calories,
+        "target_calories": current_user.goal_calories,
         "current_calories": round(current_calories),
         "daily_calories_progress": round(
-            current_calories / user_db.goal_calories * 100
+            current_calories / current_user.goal_calories * 100
         ),
         "carbohydrates": round(carbohydrates),
         "proteins": round(proteins),
@@ -325,18 +465,11 @@ def get_user_daily_summary(user_id: int, day: date, db: Session = Depends(get_db
     }
 
 
-@app.get(
-    "/users/{user_id}/servings",
-    response_model=List[Dict[str, Union[MealTypes, List[ServingRead]]]],
-)
-def get_servings_by_user_id(user_id: int, day: date, db: Session = Depends(get_db)):
-    user_db = db.query(User).filter(User.id == user_id).first()
-    if user_db is None:
-        raise HTTPException(status_code=404, detail="User not found")
-
+@app.get("/get-daily-servings", response_model=List[Dict[str, Union[MealTypes, List[ServingRead]]]])
+def get_daily_servings(day: date, current_user: UserRead = Depends(get_current_user_with_info), db: Session = Depends(get_db)):
     query = (
         db.query(Serving)
-        .filter(Serving.user_id == user_id, func.date(Serving.consumed_at) == day)
+        .filter(Serving.user_id == current_user.id, func.date(Serving.consumed_at) == day)
         .all()
     )
 
@@ -351,15 +484,11 @@ def get_servings_by_user_id(user_id: int, day: date, db: Session = Depends(get_d
     ]
 
 
-@app.get("/users/{user_id}/finish-day", response_model=FinishDayResponse)
-def finish_day(user_id: int, day: date, db: Session = Depends(get_db)):
-    user_db = db.query(User).filter(User.id == user_id).first()
-    if user_db is None:
-        raise HTTPException(status_code=404, detail="User not found")
-
+@app.get("/finish-day", response_model=FinishDayResponse)
+def finish_day(day: date, current_user: UserRead = Depends(get_current_user_with_info), db: Session = Depends(get_db)):
     query = (
         db.query(Serving)
-        .filter(Serving.user_id == user_id, func.date(Serving.consumed_at) == day)
+        .filter(Serving.user_id == current_user.id, func.date(Serving.consumed_at) == day)
         .all()
     )
 
@@ -368,11 +497,11 @@ def finish_day(user_id: int, day: date, db: Session = Depends(get_db)):
     for serving in query:
         current_calories += serving.quantity * serving.portion.calories
 
-    if current_calories < user_db.goal_calories:
+    if current_calories < current_user.goal_calories:
         return {
             "message": "You have not reached your goal calories for today. However, you can still eat more!"
         }
-    elif current_calories > user_db.goal_calories:
+    elif current_calories > current_user.goal_calories:
         return {
             "message": "You have exceeded your goal calories for today. Be careful with your diet!"
         }
@@ -418,22 +547,17 @@ def create_food(
 
 @app.get("/foods", response_model=List[FoodRead])
 def read_foods(
-    name: Optional[str] = Query(None, description="Name of the food to search for"),
-    description: Optional[str] = Query(
-        None, description="Description of the food to search for"
-    ),
+    search_query: Optional[str] = Query(None, description="Query to search for foods"),
     skip: int = 0,
     limit: int = 10,
     db: Session = Depends(get_db),
 ):
-    query = db.query(Food)
+    result = db.query(Food)
 
-    if name is not None:
-        query = query.filter(Food.name.ilike(f"%{name}%"))
-    if description is not None:
-        query = query.filter(Food.description.ilike(f"%{description}%"))
+    if search_query is not None:
+        result = result.filter(Food.name.ilike(f"%{search_query}%"))
 
-    return query.offset(skip).limit(limit).all()
+    return result.offset(skip).limit(limit).all()
 
 
 @app.get("/foods/{food_id}", response_model=FoodRead)
@@ -563,12 +687,7 @@ def delete_portion(portion_id: int, db: Session = Depends(get_db)):
 
 
 @app.post("/servings", response_model=ServingRead)
-def create_serving(serving_data: ServingCreate, db: Session = Depends(get_db)):
-    # Check if user exists
-    user = db.query(User).filter(User.id == serving_data.user_id).first()
-    if not user:
-        raise HTTPException(status_code=404, detail="User not found")
-
+def create_serving(serving_data: ServingCreate, current_user: UserRead = Depends(get_current_user_with_info), db: Session = Depends(get_db)):
     # Check if food exists
     food = db.query(Food).filter(Food.id == serving_data.food_id).first()
     if not food:
@@ -583,7 +702,7 @@ def create_serving(serving_data: ServingCreate, db: Session = Depends(get_db)):
         quantity=serving_data.quantity,
         meal_type=serving_data.meal_type,
         consumed_at=serving_data.consumed_at,
-        user_id=serving_data.user_id,
+        user_id=current_user.id,
         food_id=serving_data.food_id,
         portion_id=serving_data.portion_id,
     )

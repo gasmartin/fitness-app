@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { View, TextInput, FlatList, Text, ActivityIndicator, StyleSheet, Pressable } from 'react-native';
 
 import api from '../axiosConfig';
+import { getToken } from '../helpers/token';
 
 const FoodSearchResults = ({ navigation: { navigate } }) => {
     const [searchQuery, setSearchQuery] = useState("");
@@ -11,7 +12,12 @@ const FoodSearchResults = ({ navigation: { navigate } }) => {
     const fetchFoodResults = async (query) => {
         setIsLoading(true);
         try {
-            const response = await api.get(`/foods?name=${query}`);
+            const token = await getToken();
+            const response = await api.get(`/foods?search_query=${query}`, {
+                headers: {
+                    Authorization: `Bearer ${token}`
+                },
+            });
             setResults(response.data);
         } catch (error) {
             console.error(error);

@@ -4,6 +4,9 @@ import { createStackNavigator } from '@react-navigation/stack';
 
 import { CurrentDateProvider } from './contexts/CurrentDateContext';
 
+import AuthLoading from './screens/AuthLoading';
+import Login from './screens/Login';
+import Register from './screens/Register';
 import InitialForm from './screens/InitialForm';
 import Summary from './screens/Summary';
 import DailyServings from './screens/DailyServings';
@@ -16,7 +19,10 @@ const App = () => {
   return (
     <CurrentDateProvider>
       <NavigationContainer>
-        <Stack.Navigator initialRouteName="DailyServings" screenOptions={{ headerShown: false }}>
+        <Stack.Navigator initialRouteName="AuthLoading" screenOptions={{ headerShown: false }}>
+          <Stack.Screen name="AuthLoading" component={AuthLoading} />
+          <Stack.Screen name="Login" component={Login} />
+          <Stack.Screen name="Register" component={Register} />
           <Stack.Screen name="InitialForm" component={InitialForm} />
           <Stack.Screen name="Summary" component={Summary} />
           <Stack.Screen name="DailyServings" component={DailyServings} />
