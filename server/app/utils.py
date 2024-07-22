@@ -1,6 +1,6 @@
 from typing import Union
 
-from app.types import (
+from app.enums import (
     ActivityLevelTypes, 
     GenderTypes,
     GoalTypes,
@@ -10,23 +10,13 @@ from app.types import (
 def calculate_bmr(gender: Union[str, GenderTypes], age: int, height: float, weight: float) -> int:
     """
     This method will calculate the Basal Metabolic Rate (BMR) of the user
-    using the Harris-Beneidct equation revised by Roza and Shizgal in 1984
+    using the Mifflin-St Jeor Equation
     """
     gender = GenderTypes(gender)
     if gender is GenderTypes.MALE:
-        bmr = (
-            88.362
-            + (13.397 * weight)
-            + (4.799 * height)
-            + (5.677 * age)
-        )
+        bmr = 10 * weight + 6.25 * height - 5 * age + 5
     elif gender is GenderTypes.FEMALE:
-        bmr = (
-            447.593
-            + (9.247 * weight)
-            + (3.098 * height)
-            - (4.330 * age)
-        )
+        bmr = 10 * weight + 6.25 * height - 5 * age - 161
     else:
         raise NotImplementedError
 
@@ -56,18 +46,18 @@ def calculate_tdee(bmr: int, activity_level: Union[str, ActivityLevelTypes]) -> 
     return round(bmr * activity_factor)
 
 
-def calculate_goal_calories(tdee: int, goal_type: Union[str, GoalTypes]) -> int:
+def calculate_goal_calories(tdee: int, goal_type: str) -> int:
     """
-    This method will calculate the calories needed to achieve the user's goal
+    This method will calculate the goal calories based on the user's
+    Total Daily Energy Expenditure (TDEE) and the goal type
     """
     goal_type = GoalTypes(goal_type)
     if goal_type is GoalTypes.LOSE_WEIGHT:
-        goal_calories = tdee - (tdee * 0.2)  # Decreasing 20% of TDEE
-    elif goal_type is GoalTypes.MAINTAIN_WEIGHT:
+        goal_calories = tdee * .8
+    elif goal_type == "maintain_weight":
         goal_calories = tdee
-    elif goal_type is GoalTypes.GAIN_WEIGHT:
-        goal_calories = tdee + (tdee * 0.2)  # Increasing 20% of TDEE
+    elif goal_type == "gain_weight":
+        goal_calories = tdee * 1.2
     else:
         raise NotImplementedError
-
     return round(goal_calories)

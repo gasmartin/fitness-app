@@ -1,0 +1,20 @@
+version: '3.8'
+
+services:
+  taco-api:
+    image: raulfdm/taco-api
+    ports:
+      - "4000:4000"
+
+  api:
+    build: .
+    volumes:
+      - .:/app
+    ports:
+      - "8000:8000"
+    depends_on:
+      - taco-api
+    environment:
+      - ENV=development
+      - TACO_API_GRAPHQL_URL=http://taco-api:4000
+    command: ["/wait-for-it.sh", "taco-api:4000", "--", "uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000", "--reload"]
