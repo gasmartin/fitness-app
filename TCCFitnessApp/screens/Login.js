@@ -1,7 +1,8 @@
 import React, { useRef } from 'react';
 import { Alert, Keyboard, StyleSheet, Text, TextInput, TouchableOpacity, TouchableWithoutFeedback, View } from 'react-native';
+
 import api from '../axiosConfig';
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import { setToken } from '../helpers/token';
 
 const Login = ({ navigation: { navigate, replace } }) => {
     const emailInput = useRef(null);
@@ -21,13 +22,13 @@ const Login = ({ navigation: { navigate, replace } }) => {
         data.append("password", password);
 
         try {
-            const response = await api.post("/login", data, {
+            const response = await api.post("/users/login", data, {
                 headers: {
                     "Content-Type": "application/x-www-form-urlencoded"
                 }
             });
-            const { access_token } = response.data;
-            await AsyncStorage.setItem("access_token", access_token);
+            const { access_token: accessToken } = response.data;
+            await setToken(accessToken);
             replace("AuthLoading");
         }
         catch (error) {

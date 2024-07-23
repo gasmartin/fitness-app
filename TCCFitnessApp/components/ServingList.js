@@ -22,7 +22,7 @@ const ServingList = ({ servings, refreshServings }) => {
             renderItem={({ item }) => (
                 <View>
                     <Text style={styles.mealType}>{getMealTypeTranslation(item.mealType)}</Text>
-                    {item.servings.length > 0 ? item.servings.map((serving, index) => (
+                    {item.userFoods.length > 0 ? item.userFoods.map((serving, index) => (
                         <ServingCard key={index} serving={serving} />
                     )) : (
                         <View style={{height: 36, justifyContent: 'center', alignItems: 'center'}}>

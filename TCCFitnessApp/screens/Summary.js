@@ -24,12 +24,7 @@ const Summary = ({ navigation, route }) => {
             const token = await getToken();
 
             try {
-                const response = await api.get(`/get-goal-calories-preview?gender=${gender}&age=${age}&height=${height}&weight=${weight}&activity_level=${activityLevel}&goal_type=${goalType}`, {
-                    headers: {
-                        Authorization: `Bearer ${token}`
-                    },
-                });
-
+                const response = await api.get(`/get-goal-calories-preview?gender=${gender}&age=${age}&height=${height}&weight=${weight}&activity_level=${activityLevel}&goal_type=${goalType}`);
                 setGoalCalories(response.data.goal_calories);
             }
             catch (error) {
@@ -54,18 +49,12 @@ const Summary = ({ navigation, route }) => {
             goal_type: goalType
         };
 
-        const token = await getToken();
-
         try {
-            await api.put("/users/me", body, {
-                headers: {
-                    Authorization: `Bearer ${token}`
-                },
-            });
+            await api.put("/users/", body);
             navigation.dispatch(
                 CommonActions.reset({
                     index: 0,
-                    routes: [{ name: "DailyServings" }],
+                    routes: [{ name: "Home" }],
                 })
             );
         }

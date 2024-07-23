@@ -10,3 +10,21 @@ export const getToken = async () => {
         return null;
     }
 }
+
+export const setToken = async (token) => {
+    try {
+        await AsyncStorage.setItem("access_token", token);
+    }
+    catch (error) {
+        console.error('Failed to store token in storage', error);
+    }
+}
+
+export const removeToken = async () => {
+    try {
+        await AsyncStorage.removeItem("access_token");
+    }
+    catch (error) {
+        console.error('Failed to remove token from storage', error);
+    }
+}

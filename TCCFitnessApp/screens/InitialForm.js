@@ -56,18 +56,6 @@ const InitialForm = ({ navigation: { navigate } }) => {
                     </Text>
                 </View>
                 <View style={styles.formContainer}>
-                    {/* <View style={styles.inputContainer}>
-                            <Text style={styles.formLabel}>
-                                Gênero
-                            </Text>
-                            <TextInput
-                                style={styles.smallInput}
-                                placeholder="M ou F"
-                                maxLength={1}
-                                ref={genderInputRef}
-                                onChangeText={(e) => genderInputRef.current.value = e}
-                            />
-                        </View> */}
                     <Text style={styles.formLabel}>
                         Gênero
                     </Text>

@@ -1,5 +1,5 @@
 import React, { useContext, useEffect, useState } from 'react';
-import { ActivityIndicator, Alert, View, Text, TextInput, StyleSheet, TouchableOpacity } from 'react-native';
+import { ActivityIndicator, ScrollView, View, Text, TextInput, StyleSheet, TouchableOpacity } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import { FAB } from 'react-native-paper';
 import { format, addDays } from 'date-fns';
@@ -7,14 +7,15 @@ import { format, addDays } from 'date-fns';
 import axios from 'axios';
 import api from '../axiosConfig';
 import { CurrentDateContext } from '../contexts/CurrentDateContext';
+import Dashboard from '../components/Dashboard';
 import ServingList from '../components/ServingList';
-import { getToken } from '../helpers/token';
 
 
 const DailyServings = ({ navigation }) => {
   const { currentDate, setCurrentDate } = useContext(CurrentDateContext);
 
   const [servingsByDate, setServingsByDate] = useState({});
+  const [dashboardInfo, setDashboardInfo] = useState({});
   const [isLoading, setIsLoading] = useState(false);
 
   const formattedDate = format(currentDate, 'yyyy-MM-dd');
@@ -23,16 +24,22 @@ const DailyServings = ({ navigation }) => {
     setCurrentDate(addDays(currentDate, days));
   };
 
+  const fetchDashboardInfo = async () => {
+    try {
+      const response = await api.get(`/dashboard-info?day=${formattedDate}`);
+      const { consumed_calories: consumedCalories, goal_calories: goalCalories } = response.data;
+      setDashboardInfo({ consumedCalories, goalCalories });
+    }
+    catch (error) {
+      console.error(error);
+    }
+  };
+
   const fetchServings = async (useLoading = true) => {
     useLoading && setIsLoading(true);
     try {
       // Fetch servings data from an API
-      const token = await getToken();
-      const response = await api.get(`/get-daily-servings?day=${formattedDate}`, {
-        headers: {
-          Authorization: `Bearer ${token}`
-        },
-      });
+      const response = await api.get(`/user-foods/?day=${formattedDate}`);
       setServingsByDate({
         ...servingsByDate,
         [formattedDate]: response.data,
@@ -57,15 +64,17 @@ const DailyServings = ({ navigation }) => {
   }
 
   useEffect(() => {
+    fetchDashboardInfo();
     if (!servingsByDate[formattedDate]) {
-      console.log(servingsByDate[formattedDate]);
       fetchServings();
     }
   }, [currentDate]);
 
   useFocusEffect(
     React.useCallback(() => {
-      fetchServings();  // FIXME: Everytime the currentDate is changed, the fetchServings is called
+      fetchDashboardInfo();
+      // FIXME: Everytime the currentDate is changed, the fetchServings is called
+      fetchServings();  
     }, [currentDate])
   );
 
@@ -84,6 +93,7 @@ const DailyServings = ({ navigation }) => {
           </Text>
         </TouchableOpacity>
       </View>
+      <Dashboard dashboardInfo={dashboardInfo} />
       {isLoading ? (
         <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
           <ActivityIndicator size="large" color="#FF6624" />
@@ -110,7 +120,6 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'flex-end',
-    marginBottom: 16,
     paddingVertical: 32,
   },
   dateInput: {

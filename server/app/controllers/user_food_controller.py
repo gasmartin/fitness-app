@@ -1,11 +1,12 @@
 from datetime import date
-from typing import List, Optional
+from typing import Dict, List, Optional, Union
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.orm import Session
 
 from app.dependencies.auth import get_current_user
 from app.dependencies.database import get_db
+from app.enums import MealTypes
 from app.models import Food, UserFood
 from app.schemas import user as user_schemas
 from app.schemas import user_food as user_food_schemas
@@ -18,7 +19,7 @@ router = APIRouter(
 )
 
 
-@router.get("/", response_model=List[user_food_schemas.UserFood])
+@router.get("/", response_model=List[Dict[str, Union[MealTypes, List[user_food_schemas.UserFood]]]])
 async def get_user_foods(
     day: Optional[date] = Query(None, description="Day to filter user foods"),
     current_user: user_schemas.User = Depends(get_current_user),
@@ -31,7 +32,22 @@ async def get_user_foods(
             user_food for user_food in user_foods if user_food.consumed_at.date() == day
         ]
 
-    return user_foods
+    user_foods_by_meal_type = {}
+    
+    # Group user foods by meal type
+    for meal_type in MealTypes:
+        user_foods_by_meal_type[meal_type] = [
+            user_food
+            for user_food in user_foods
+            if user_food.meal_type == meal_type
+        ]
+
+    result_list = []
+
+    for meal_type, user_foods in user_foods_by_meal_type.items():
+        result_list.append({"mealType": meal_type, "userFoods": user_foods})
+
+    return result_list
 
 
 @router.post("/", response_model=user_food_schemas.UserFood)

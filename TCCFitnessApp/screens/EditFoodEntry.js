@@ -1,61 +1,55 @@
-import React, { useContext, useState } from 'react';
-import { View, Text, TextInput, Keyboard, TouchableWithoutFeedback, StyleSheet, TouchableOpacity } from 'react-native';
+import React, { useState } from 'react';
+import { Text, TextInput, View, StyleSheet, TouchableOpacity, Keyboard, TouchableWithoutFeedback } from 'react-native';
 import DropDownPicker from 'react-native-dropdown-picker';
-import { format } from 'date-fns';
+
+import FoodEntryDetails from '../components/FoodEntryDetails';
 
 import api from '../axiosConfig';
 import { mealTypeItems } from '../utils/mealTypes';
-import { CurrentDateContext } from '../contexts/CurrentDateContext';
-import axios from 'axios';
 
-const AddFoodEntry = ({ navigation: { goBack, navigate }, route: { params: { food } } }) => {
-    const { name, kcal, carbohydrates, protein, lipids } = food;
+const EditFoodEntry = ({ navigation, route }) => {
+    const { userFood } = route.params;
 
-    const { currentDate } = useContext(CurrentDateContext);
-
-    const [mealType, setMealType] = useState(mealTypeItems[0].value);
-    const [quantity, setQuantity] = useState("0");
-
+    const [mealType, setMealType] = useState(userFood.meal_type);
+    const [quantityInGrams, setQuantityInGrams] = useState(userFood.quantity_in_grams.toString());
     const [isMealTypeDropdownOpen, setIsMealTypeDropdownOpen] = useState(false);
 
-    const handleAdd = async () => {
-        const parsedQuantity = parseInt(quantity.replace(",", "."));
-
+    const handleSave = async () => {
         const body = {
             meal_type: mealType,
-            quantity_in_grams: parsedQuantity,
-            consumed_at: format(currentDate, "yyyy-MM-dd"),
-            food,
-        };
+            quantity_in_grams: parseInt(quantityInGrams)
+        }
 
         try {
-            await api.post("/user-foods/", body);
-            navigate("Home");
+            await api.put(`/user-foods/${userFood.id}`, body);
+            navigation.goBack();
         }
         catch (error) {
-            if (axios.isAxiosError(error)) {
-                if (error.response.status === 401) {
-                    navigate("AuthLoading");
-                }
-                else {
-                    console.error(error.response.data);
-                }
-            }
-            else {
-                console.error(error);
-            }
+            console.log(error);
         }
     };
 
-    const handleBack = () => {
-        goBack();
-    }
+    const handleDelete = async () => {
+        try {
+            await api.delete(`/user-foods/${userFood.id}`);
+            navigation.navigate("Home");
+        }
+        catch (error) {
+            console.log(error);
+        }
+    };
+
+    const handleCancel = () => {
+        navigation.goBack()
+    };
 
     return (
         <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
             <View style={styles.container}>
                 <View style={styles.header}>
-                    <Text style={styles.headerTitle}>{name}</Text>
+                    <Text style={styles.headerTitle}>
+                        {userFood.food.name}
+                    </Text>
                 </View>
                 <View style={styles.body}>
                     <Text style={styles.formLabel}>Tipo de refeição:</Text>
@@ -76,21 +70,27 @@ const AddFoodEntry = ({ navigation: { goBack, navigate }, route: { params: { foo
                     />
                     <Text style={styles.formLabel}>Quantidade em gramas consumida:</Text>
                     <TextInput
-                        value={quantity}
-                        onChangeText={setQuantity}
+                        value={quantityInGrams}
+                        onChangeText={setQuantityInGrams}
                         keyboardType="numeric"
                         style={styles.input}
                     />
                 </View>
+                <FoodEntryDetails quantity={quantityInGrams} food={userFood.food} />
                 <View style={styles.buttonsContainer}>
-                    <TouchableOpacity style={styles.primaryButton} onPress={handleAdd}>
-                        <Text style={styles.primaryButtonText}>
-                            Adicionar
+                    <TouchableOpacity onPress={handleSave}>
+                        <Text>
+                            Salvar
                         </Text>
                     </TouchableOpacity>
-                    <TouchableOpacity style={styles.secondaryButton} onPress={handleBack}>
-                        <Text style={styles.secondaryButtonText}>
-                            Voltar
+                    <TouchableOpacity onPress={handleDelete}>
+                        <Text>
+                            Deletar
+                        </Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity onPress={handleCancel}>
+                        <Text>
+                            Cancelar
                         </Text>
                     </TouchableOpacity>
                 </View>
@@ -183,4 +183,4 @@ const styles = StyleSheet.create({
     }
 });
 
-export default AddFoodEntry;
+export default EditFoodEntry;

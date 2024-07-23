@@ -1,8 +1,8 @@
 import React, { useRef, useState } from 'react';
-import { Keyboard, StyleSheet, Text, TextInput, TouchableOpacity, TouchableWithoutFeedback, View } from 'react-native';
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import { ActivityIndicator, Keyboard, StyleSheet, Text, TextInput, TouchableOpacity, TouchableWithoutFeedback, View } from 'react-native';
+
 import api from '../axiosConfig';
-import { ActivityIndicator } from 'react-native-paper';
+import { setToken } from '../helpers/token';
 
 const Register = ({ navigation }) => {
     const nameInput = useRef(null);
@@ -31,13 +31,13 @@ const Register = ({ navigation }) => {
         setIsLoading(true);
 
         try {
-            const response = await api.post("/users", {
+            const response = await api.post("/users/", {
                 name,
                 email,
                 password,
             });
-            const { access_token } = response.data;
-            await AsyncStorage.setItem("access_token", access_token);
+            const { access_token: accessToken } = response.data;
+            await setToken(accessToken);
             navigation.replace("AuthLoading");
         }
         catch (error) {

@@ -46,7 +46,7 @@ def calculate_tdee(bmr: int, activity_level: Union[str, ActivityLevelTypes]) -> 
     return round(bmr * activity_factor)
 
 
-def calculate_goal_calories(tdee: int, goal_type: str) -> int:
+def calculate_goal_calories(tdee: int, goal_type: Union[str, GoalTypes]) -> int:
     """
     This method will calculate the goal calories based on the user's
     Total Daily Energy Expenditure (TDEE) and the goal type
@@ -54,9 +54,9 @@ def calculate_goal_calories(tdee: int, goal_type: str) -> int:
     goal_type = GoalTypes(goal_type)
     if goal_type is GoalTypes.LOSE_WEIGHT:
         goal_calories = tdee * .8
-    elif goal_type == "maintain_weight":
+    elif goal_type is GoalTypes.MAINTAIN_WEIGHT:
         goal_calories = tdee
-    elif goal_type == "gain_weight":
+    elif goal_type is GoalTypes.GAIN_WEIGHT:
         goal_calories = tdee * 1.2
     else:
         raise NotImplementedError

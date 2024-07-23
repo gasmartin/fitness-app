@@ -4,6 +4,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from app.controllers.user_controller import router as user_router
 from app.controllers.food_controller import router as food_router
 from app.controllers.user_food_controller import router as user_food_router
+from app.controllers.utility_controller import router as utility_router
 
 app = FastAPI(title="Fitness app server", version="1.0.0")
 
@@ -23,6 +24,7 @@ app.add_middleware(
 app.include_router(user_router)
 app.include_router(food_router)
 app.include_router(user_food_router)
+app.include_router(utility_router)
 
 
 @app.get("/")

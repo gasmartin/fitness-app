@@ -21,86 +21,93 @@ async def get_foods(
     search_term: Optional[str] = Query(None, description="The search term used to filter foods"),
     # current_user: user_schema.User = Depends(get_current_user),
 ):
-    if search_term is None:
-        query = """
-        query getAllFood {
-            getAllFood {
-                id
-                name
-                nutrients {
-                    kcal
-                    carbohydrates
-                    protein
-                    lipids
+    try:
+        if search_term is None:
+            query = """
+            query getAllFood {
+                getAllFood {
+                    id
+                    name
+                    nutrients {
+                        kcal
+                        carbohydrates
+                        protein
+                        lipids
+                    }
                 }
             }
-        }
-        """
+            """
 
-        async with httpx.AsyncClient() as client:
-            response = await client.post(
-                os.getenv("TACO_API_GRAPHQL_URL"),
-                json={"query": query},
-            )
-
-            if response.status_code != 200:
-                raise HTTPException(
-                    status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                    detail="Failed to fetch foods",
+            async with httpx.AsyncClient() as client:
+                response = await client.post(
+                    os.getenv("TACO_API_GRAPHQL_URL") + "/graphql",
+                    json={"query": query},
                 )
 
-            foods = response.json()["data"]["getAllFood"]
+                if response.status_code != 200:
+                    raise HTTPException(
+                        status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                        detail="Failed to fetch foods",
+                    )
 
-            # Putting the nutrients outside
-            for food in foods:
-                food["kcal"] = food["nutrients"].pop("kcal")
-                food["carbohydrates"] = food["nutrients"].pop("carbohydrates")
-                food["protein"] = food["nutrients"].pop("protein")
-                food["lipids"] = food["nutrients"].pop("lipids")
-                del food["nutrients"]
-        
-            return foods
-    else:
-        query = """
-        query getFoodByName($name: String!) {
-            getFoodByName(name: $name) {
-                id
-                name
-                nutrients {
-                    kcal
-                    carbohydrates
-                    protein
-                    lipids
+                foods = response.json()["data"]["getAllFood"]
+
+                # Putting the nutrients outside
+                for food in foods:
+                    food["kcal"] = food["nutrients"].pop("kcal")
+                    food["carbohydrates"] = food["nutrients"].pop("carbohydrates")
+                    food["protein"] = food["nutrients"].pop("protein")
+                    food["lipids"] = food["nutrients"].pop("lipids")
+                    del food["nutrients"]
+            
+                return foods
+        else:
+            query = """
+            query getFoodByName($name: String!) {
+                getFoodByName(name: $name) {
+                    id
+                    name
+                    nutrients {
+                        kcal
+                        carbohydrates
+                        protein
+                        lipids
+                    }
                 }
             }
-        }
-        """
+            """
 
-        variables = {"name": search_term}
+            variables = {"name": search_term}
 
-        async with httpx.AsyncClient() as client:
-            response = await client.post(
-                os.getenv("TACO_API_GRAPHQL_URL"),
-                json={"query": query, "variables": variables},
-            )
-
-            if response.status_code != 200:
-                raise HTTPException(
-                    status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                    detail="Failed to fetch foods",
+            async with httpx.AsyncClient() as client:
+                response = await client.post(
+                    os.getenv("TACO_API_GRAPHQL_URL") + "/graphql",
+                    json={"query": query, "variables": variables},
                 )
 
-            foods = response.json()["data"]["getFoodByName"]
+                if response.status_code != 200:
+                    raise HTTPException(
+                        status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                        detail="Failed to fetch foods",
+                    )
 
-            # Putting the nutrients outside
-            for food in foods:
-                food["kcal"] = food["nutrients"].pop("kcal")
-                food["carbohydrates"] = food["nutrients"].pop("carbohydrates")
-                food["protein"] = food["nutrients"].pop("protein")
-                food["lipids"] = food["nutrients"].pop("lipids")
-                del food["nutrients"]
-        
-            return foods
+                foods = response.json()["data"]["getFoodByName"]
+
+                # Putting the nutrients outside
+                for food in foods:
+                    food["kcal"] = food["nutrients"].pop("kcal")
+                    food["carbohydrates"] = food["nutrients"].pop("carbohydrates")
+                    food["protein"] = food["nutrients"].pop("protein")
+                    food["lipids"] = food["nutrients"].pop("lipids")
+                    del food["nutrients"]
+            
+                return foods
+    except Exception as e:
+        print(e)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to fetch foods: " + str(e),
+        )
 
 
 @router.get("/{food_id}")

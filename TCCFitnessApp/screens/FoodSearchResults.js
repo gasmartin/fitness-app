@@ -12,12 +12,7 @@ const FoodSearchResults = ({ navigation: { navigate } }) => {
     const fetchFoodResults = async (query) => {
         setIsLoading(true);
         try {
-            const token = await getToken();
-            const response = await api.get(`/foods?search_query=${query}`, {
-                headers: {
-                    Authorization: `Bearer ${token}`
-                },
-            });
+            const response = await api.get(`/foods/?search_term=${query}`);
             setResults(response.data);
         } catch (error) {
             console.error(error);

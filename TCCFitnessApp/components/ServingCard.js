@@ -1,25 +1,30 @@
 import React from 'react';
-import { View, Text, StyleSheet } from 'react-native';
+import { View, Text, StyleSheet, TouchableWithoutFeedback } from 'react-native';
+import { useNavigation } from '@react-navigation/native';
 
 const ServingCard = ({ serving }) => {
-    const { consumed_calories, food: { name, description } } = serving;
+    const navigation = useNavigation();
+    const { kcal, food: { name } } = serving;
+
+    const handlePress = () => {
+        navigation.navigate("EditFoodEntry", { userFood: serving });
+    };
 
     return (
-        <View style={styles.container}>
-            <View style={{ flex: 2, flexDirection: 'column', justifyContent: 'space-around' }}>
-                <Text style={styles.foodName}>
-                    { name }
-                </Text>
-                <Text style={styles.foodDescription}>
-                    { description }
-                </Text>
+        <TouchableWithoutFeedback onPress={handlePress}>
+            <View style={styles.container}>
+                <View style={{ flex: 2, flexDirection: 'column', justifyContent: 'space-around' }}>
+                    <Text style={styles.foodName}>
+                        {name}
+                    </Text>
+                </View>
+                <View style={{ flex: 1, flexDirection: 'row', justifyContent: 'flex-end', alignItems: 'center' }}>
+                    <Text style={styles.consumedCalories}>
+                        {kcal} kcal
+                    </Text>
+                </View>
             </View>
-            <View style={{ flex: 1, flexDirection: 'row', justifyContent: 'flex-end', alignItems: 'center' }}>
-                <Text style={styles.consumedCalories}>
-                    { consumed_calories } kcal
-                </Text>
-            </View>
-        </View>
+        </TouchableWithoutFeedback>
     );
 };
 

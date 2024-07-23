@@ -5,7 +5,7 @@ from fastapi import APIRouter, Query, Depends
 
 from app.dependencies.auth import get_current_user
 from app.schemas import user as schemas
-from app.utils import calculate_bmr, calculate_tdee
+from app.utils import calculate_bmr, calculate_tdee, calculate_goal_calories
 
 
 router = APIRouter(
@@ -15,19 +15,21 @@ router = APIRouter(
 
 
 @router.get(
-    "/get-total-daily-energy-expenditure-preview", response_model=Dict[str, int]
+    "/get-goal-calories-preview", response_model=Dict[str, int]
 )
-async def get_total_daily_energy_expenditure_preview(
+async def get_goal_calories_preview(
     gender: str = Query,
     age: int = Query,
     height: float = Query,
     weight: float = Query,
     activity_level: str = Query,
+    goal_type: str = Query,
     current_user: schemas.User = Depends(get_current_user),
 ):
     bmr = calculate_bmr(gender, age, height, weight)
     tdee = calculate_tdee(bmr, activity_level)
-    return {"tdee": tdee}
+    goal_calories = calculate_goal_calories(tdee, goal_type)
+    return {"goal_calories": goal_calories}
 
 
 @router.get("/dashboard-info", response_model=Dict[str, Union[float, int]])
@@ -37,14 +39,13 @@ async def get_dashboard_info(
     consumed_calories = 0.0
 
     # Get consumed calories
-    servings = current_user.servings
+    user_foods = current_user.user_foods
 
-    for serving in servings:
-        if serving.consumed_at.date() == day:
-            consumed_calories += serving.quantity * serving.portion.calories
+    for user_food in user_foods:
+        if user_food.consumed_at.date() == day:
+            consumed_calories += user_food.kcal
 
     return {
-        "bmr": current_user.bmr,
-        "tdee": current_user.tdee,
+        "goal_calories": current_user.goal_calories,
         "consumed_calories": consumed_calories,
     }
