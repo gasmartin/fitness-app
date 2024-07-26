@@ -7,6 +7,7 @@ import api from '../axiosConfig';
 import { mealTypeItems } from '../utils/mealTypes';
 import { CurrentDateContext } from '../contexts/CurrentDateContext';
 import axios from 'axios';
+import FoodEntryDetails from '../components/FoodEntryDetails';
 
 const AddFoodEntry = ({ navigation: { goBack, navigate }, route: { params: { food } } }) => {
     const { name, kcal, carbohydrates, protein, lipids } = food;
@@ -81,6 +82,7 @@ const AddFoodEntry = ({ navigation: { goBack, navigate }, route: { params: { foo
                         keyboardType="numeric"
                         style={styles.input}
                     />
+                    <FoodEntryDetails quantity={quantity} food={food} />
                 </View>
                 <View style={styles.buttonsContainer}>
                     <TouchableOpacity style={styles.primaryButton} onPress={handleAdd}>
@@ -107,7 +109,7 @@ const styles = StyleSheet.create({
     header: {
         padding: 32,
         flexDirection: 'column',
-        height: "20%",
+        flex: 1,
         justifyContent: 'space-around',
         alignItems: 'center',
         marginBottom: 20,

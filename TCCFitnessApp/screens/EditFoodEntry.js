@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Text, TextInput, View, StyleSheet, TouchableOpacity, Keyboard, TouchableWithoutFeedback } from 'react-native';
+import { Button, Text, TextInput, View, StyleSheet, TouchableOpacity, Keyboard, TouchableWithoutFeedback } from 'react-native';
 import DropDownPicker from 'react-native-dropdown-picker';
 
 import FoodEntryDetails from '../components/FoodEntryDetails';
@@ -75,24 +75,27 @@ const EditFoodEntry = ({ navigation, route }) => {
                         keyboardType="numeric"
                         style={styles.input}
                     />
+                    <FoodEntryDetails quantity={quantityInGrams} food={userFood.food} />
                 </View>
-                <FoodEntryDetails quantity={quantityInGrams} food={userFood.food} />
                 <View style={styles.buttonsContainer}>
-                    <TouchableOpacity onPress={handleSave}>
-                        <Text>
+                    <TouchableOpacity style={styles.buttonSave} onPress={handleSave}>
+                        <Text style={styles.buttonText}>
                             Salvar
                         </Text>
                     </TouchableOpacity>
-                    <TouchableOpacity onPress={handleDelete}>
-                        <Text>
-                            Deletar
+                    <TouchableOpacity style={styles.buttonRemove} onPress={handleDelete}>
+                        <Text style={styles.buttonText}>
+                            Remover
                         </Text>
                     </TouchableOpacity>
-                    <TouchableOpacity onPress={handleCancel}>
-                        <Text>
+                    <View>
+                        <Button title="Cancelar" onPress={handleCancel} />
+                    </View>
+                    {/* <TouchableOpacity style={styles.buttonCancel} onPress={handleCancel}>
+                        <Text style={styles.buttonText}>
                             Cancelar
                         </Text>
-                    </TouchableOpacity>
+                    </TouchableOpacity> */}
                 </View>
             </View>
         </TouchableWithoutFeedback>
@@ -107,7 +110,7 @@ const styles = StyleSheet.create({
     header: {
         padding: 32,
         flexDirection: 'column',
-        height: "20%",
+        flex: 2,
         justifyContent: 'space-around',
         alignItems: 'center',
         marginBottom: 20,
@@ -121,7 +124,7 @@ const styles = StyleSheet.create({
         color: '#666',
     },
     body: {
-        flex: 3,
+        flex: 7,
     },
     picker: {
         height: 50,
@@ -148,39 +151,39 @@ const styles = StyleSheet.create({
         justifyContent: 'space-around',
     },
     buttonsContainer: {
-        flex: 1,
+        flex: 3,
         width: "100%",
         justifyContent: 'space-around',
         alignItems: 'center',
     },
-    primaryButton: {
+    buttonSave: {
         width: "100%",
         backgroundColor: "#FF6624",
         padding: 20,
         borderRadius: 10,
         marginVertical: "auto",
     },
-    primaryButtonText: {
+    buttonText: {
         color: "#FFFFFF",
         fontSize: 20,
         textAlign: "center",
         textTransform: "capitalize",
         fontWeight: "bold",
     },
-    secondaryButton: {
+    buttonRemove: {
+        width: "100%",
+        backgroundColor: "#FF0000",
+        padding: 20,
+        borderRadius: 10,
+        marginVertical: "auto",
+    },
+    buttonCancel: {
         width: "100%",
         backgroundColor: "#B0BEC5",
         padding: 20,
         borderRadius: 10,
         marginVertical: "auto",
     },
-    secondaryButtonText: {
-        color: "#FFFFFF",
-        fontSize: 20,
-        textAlign: "center",
-        textTransform: "capitalize",
-        fontWeight: "bold",
-    }
 });
 
 export default EditFoodEntry;

@@ -7,7 +7,7 @@ from app.enums import (
 )
 
 
-def calculate_bmr(gender: Union[str, GenderTypes], age: int, height: float, weight: float) -> int:
+def calculate_bmr(gender: Union[str, GenderTypes], age: int, height: int, weight: float) -> int:
     """
     This method will calculate the Basal Metabolic Rate (BMR) of the user
     using the Mifflin-St Jeor Equation

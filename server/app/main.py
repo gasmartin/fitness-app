@@ -6,7 +6,7 @@ from app.controllers.food_controller import router as food_router
 from app.controllers.user_food_controller import router as user_food_router
 from app.controllers.utility_controller import router as utility_router
 
-app = FastAPI(title="Fitness app server", version="1.0.0")
+app = FastAPI(title="NutriTrack Server", version="1.0.0")
 
 origins = [
     "http://localhost",

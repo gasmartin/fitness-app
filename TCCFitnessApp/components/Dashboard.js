@@ -9,14 +9,17 @@ const Dashboard = ({ dashboardInfo }) => {
     return (
         <Card>
             <View style={{ justifyContent: 'center', alignItems: 'center' }}>
-                <Text style={{ fontSize: 24 }}>
-                    Dashboard
+                <Text style={{ fontSize: 18, marginBottom: 12 }}>
+                    <Text style={{ fontWeight: 'bold' }}>
+                        Calorias consumidas no dia:{" "}
+                    </Text>
+                    {dashboardInfo.consumedCalories || 0} kcal
                 </Text>
                 <Text style={{ fontSize: 18 }}>
-                    Consumed calories: {dashboardInfo.consumedCalories || 0}
-                </Text>
-                <Text style={{ fontSize: 18 }}>
-                    Goal calories: {dashboardInfo.goalCalories || 0}
+                    <Text style={{ fontWeight: 'bold' }}>
+                        Meta de calorias do dia:{" "}
+                    </Text>
+                    {dashboardInfo.goalCalories || 0} kcal
                 </Text>
                 {/* <AnimatedCircularProgress
                     size={120}

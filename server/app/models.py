@@ -30,7 +30,7 @@ class User(TimestampMixin, Base):
     # Calculate BMR using Mifflin-St Jeor Equation
     gender: Mapped[GenderTypes] = mapped_column(Enum(GenderTypes), nullable=True)
     age: Mapped[int] = mapped_column(nullable=True)
-    height: Mapped[float] = mapped_column(nullable=True)
+    height: Mapped[int] = mapped_column(nullable=True)
     weight: Mapped[float] = mapped_column(nullable=True)
 
     activity_level: Mapped[ActivityLevelTypes] = mapped_column(

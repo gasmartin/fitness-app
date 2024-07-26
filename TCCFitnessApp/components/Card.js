@@ -21,11 +21,13 @@ const styles = StyleSheet.create({
         elevation: 3,
         padding: 20,
         margin: 10,
+        marginBottom: 16,
     },
     cardTitle: {
         fontWeight: 'bold',
         marginBottom: 10,
         fontSize: 16,
+        lineHeight: 24
     },
 });
 
