@@ -15,7 +15,15 @@ from app.constants import (
 from app.dependencies.auth import get_current_user, oauth2_scheme
 from app.dependencies.database import get_db
 from app.models import User
-from app.schemas import user as schemas
+from app.schemas import (
+    Token,
+    UserRead,
+    UserCreate,
+    UserUpdate,
+    ExerciseRead,
+    ExerciseLogRead,
+    SimpleResultMessage
+)
 
 
 router = APIRouter(
@@ -69,7 +77,7 @@ async def check_token(token: str = Depends(oauth2_scheme)):
         raise credentials_exception
 
 
-@router.post("/login", response_model=schemas.Token)
+@router.post("/login", response_model=Token)
 async def login(
     form_data: OAuth2PasswordRequestForm = Depends(), db: Session = Depends(get_db)
 ):
@@ -89,8 +97,8 @@ async def login(
     return {"access_token": access_token, "token_type": "bearer"}
 
 
-@router.post("/", response_model=schemas.Token)
-async def create_user(user: schemas.UserCreate, db: Session = Depends(get_db)):
+@router.post("/", response_model=Token)
+async def create_user(user: UserCreate, db: Session = Depends(get_db)):
     user_db = User(
         name=user.name,
         email=user.email,
@@ -106,20 +114,20 @@ async def create_user(user: schemas.UserCreate, db: Session = Depends(get_db)):
     return {"access_token": access_token, "token_type": "bearer"}
 
 
-@router.get("/", response_model=List[schemas.User])
+@router.get("/", response_model=List[UserRead])
 async def read_users(db: Session = Depends(get_db)):
     return db.query(User).all()
 
 
-@router.get("/me", response_model=schemas.User)
+@router.get("/me", response_model=UserRead)
 async def read_users_me(
-    current_user: schemas.User = Depends(get_current_user),
+    current_user: UserRead = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
     return current_user
 
 
-@router.get("/{user_id}", response_model=schemas.User)
+@router.get("/{user_id}", response_model=UserRead)
 async def read_user(user_id: int, db: Session = Depends(get_db)):
     user_db = db.query(User).filter(User.id == user_id).first()
     if user_db is None:
@@ -129,10 +137,30 @@ async def read_user(user_id: int, db: Session = Depends(get_db)):
     return user_db
 
 
-@router.put("/", response_model=schemas.User)
+@router.get("/{user_id}/exercises", response_model=List[ExerciseRead])
+def get_exercises_by_user_id(user_id: int, current_user: UserRead = Depends(get_current_user), db: Session = Depends(get_db)):
+    user_db = db.query(User).filter(User.id == user_id).first()
+
+    if not user_db:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
+
+    return user_db.exercises
+
+
+@router.get("/{user_id}/exercise-logs", response_model=List[ExerciseLogRead])
+def get_exercise_logs_by_user_id(user_id: int, current_user: UserRead = Depends(get_current_user), db: Session = Depends(get_db)):
+    user_db = db.query(User).filter(User.id == user_id).first()
+
+    if not user_db:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
+    
+    return current_user.exercise_logs
+
+
+@router.put("/", response_model=UserRead)
 async def update_user(
-    user_data: schemas.UserUpdate,
-    current_user: schemas.User = Depends(get_current_user),
+    user_data: UserUpdate,
+    current_user: UserRead = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
     user_data_dict = user_data.dict(exclude_unset=True)
@@ -156,7 +184,7 @@ async def update_user(
     return current_user
 
 
-@router.delete("/", response_model=Dict[str, str])
+@router.delete("/", response_model=SimpleResultMessage)
 async def delete_user(user_id: int, db: Session = Depends(get_db)):
     user_db = db.query(User).filter(User.id == user_id).first()
     if user_db is None:

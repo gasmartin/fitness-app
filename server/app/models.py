@@ -5,15 +5,15 @@ from sqlalchemy import DateTime, Enum, ForeignKey, Time
 from sqlalchemy.orm import Mapped, declarative_base, mapped_column, relationship
 
 from app.database import engine
-from app.enums import ActivityLevelTypes, GenderTypes, GoalTypes, MealTypes
+from app.enums import ActivityLevels, Genders, Goals
 from app.utils import calculate_bmr, calculate_tdee, calculate_goal_calories
 
 Base = declarative_base()
 
 
 class TimestampMixin:
-    created_at: Mapped[DateTime] = mapped_column(default=datetime.utcnow)
-    updated_at: Mapped[DateTime] = mapped_column(default=datetime.utcnow, onupdate=datetime.utcnow)
+    created_at = mapped_column(DateTime, default=datetime.utcnow)
+    updated_at = mapped_column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
 
 class FoodComponentsMixin:
@@ -32,18 +32,19 @@ class User(TimestampMixin, Base):
     hashed_password: Mapped[str] = mapped_column(nullable=False)
 
     # Calculate BMR using Mifflin-St Jeor Equation
-    gender: Mapped[GenderTypes] = mapped_column(Enum(GenderTypes), nullable=True)
+    gender: Mapped[Genders] = mapped_column(Enum(Genders), nullable=True)
     age: Mapped[int] = mapped_column(nullable=True)
     height: Mapped[int] = mapped_column(nullable=True)
     weight: Mapped[float] = mapped_column(nullable=True)
-    activity_level: Mapped[ActivityLevelTypes] = mapped_column(Enum(ActivityLevelTypes), nullable=True)
-    goal_type: Mapped[GoalTypes] = mapped_column(Enum(GoalTypes), nullable=True)
+    activity_level: Mapped[ActivityLevels] = mapped_column(Enum(ActivityLevels), nullable=True)
+    goal_type: Mapped[Goals] = mapped_column(Enum(Goals), nullable=True)
 
     food_consuptions: Mapped[List["FoodConsumption"]] = relationship(back_populates="user", cascade="all, delete-orphan")
     meals: Mapped[List["Meal"]] = relationship(back_populates="user", cascade="all, delete-orphan")
     water_intakes: Mapped[List["WaterIntake"]] = relationship(back_populates="user", cascade="all, delete-orphan")
-    reports = Mapped[List["Report"]] = relationship(back_populates="user", cascade="all, delete-orphan")
-    exercises = Mapped[List["UserExercise"]] = relationship(back_populates="user", cascade="all, delete-orphan")
+    reports: Mapped[List["Report"]] = relationship(back_populates="user", cascade="all, delete-orphan")
+    exercises: Mapped[List["Exercise"]] = relationship(back_populates="user", cascade="all, delete-orphan")
+    exercise_logs: Mapped[List["ExerciseLog"]] = relationship(back_populates="user", cascade="all, delete-orphan")
 
     @property
     def bmr(self) -> int:
@@ -66,7 +67,7 @@ class Meal(TimestampMixin, Base):
 
     id: Mapped[int] = mapped_column(primary_key=True)
     name: Mapped[str] = mapped_column(nullable=False)
-    default_time: Mapped[Time] = mapped_column(nullable=False)
+    default_time = mapped_column(Time, nullable=False)
 
     user_id: Mapped[int] = mapped_column(ForeignKey("users.id"))
     user: Mapped["User"] = relationship(back_populates="meals")
@@ -82,7 +83,7 @@ class Food(TimestampMixin, FoodComponentsMixin, Base):
     name: Mapped[str] = mapped_column(nullable=False)
     description: Mapped[str] = mapped_column(nullable=False)
 
-    food_servings = Mapped[List["ServingSize"]] = relationship(back_populates="food", cascade="all, delete-orphan")
+    serving_sizes: Mapped[List["ServingSize"]] = relationship(back_populates="food", cascade="all, delete-orphan")
 
     def __repr__(self) -> str:
         return f"<Food id={self.id} name={self.name} calories={self.calories} carbohydrates={self.carbohydrates} proteins={self.proteins} lipids={self.lipids}>"
@@ -93,7 +94,9 @@ class ServingSize(TimestampMixin, FoodComponentsMixin, Base):
 
     id: Mapped[int] = mapped_column(primary_key=True)
     name: Mapped[str] = mapped_column(nullable=False)
-    food_id = mapped_column(ForeignKey("foods.id"))
+
+    food_id: Mapped[int] = mapped_column(ForeignKey("foods.id"))
+    food: Mapped["Food"] = relationship(back_populates="serving_sizes")
 
     def __repr__(self) -> str:
         return f"<ServingSize id={self.id} name={self.name} calories={self.calories} carbohydrates={self.carbohydrates} proteins={self.proteins} lipids={self.lipids}>"
@@ -104,7 +107,7 @@ class WaterIntake(TimestampMixin, Base):
 
     id: Mapped[int] = mapped_column(primary_key=True)
     quantity_ml: Mapped[int] = mapped_column(nullable=False)
-    date: Mapped[DateTime] = mapped_column(nullable=False)
+    date = mapped_column(DateTime, nullable=False)
 
     user_id: Mapped[int] = mapped_column(ForeignKey("users.id"))
     user: Mapped["User"] = relationship(back_populates="water_intakes")
@@ -120,7 +123,10 @@ class Exercise(TimestampMixin, Base):
     name: Mapped[str] = mapped_column(nullable=False)
     calories_per_hour: Mapped[int] = mapped_column(nullable=False)
 
-    exercise_logs: Mapped[List["UserExercise"]] = relationship(back_populates="exercise")
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id"))
+    user: Mapped["User"] = relationship(back_populates="exercises")
+
+    exercise_logs: Mapped[List["ExerciseLog"]] = relationship(back_populates="exercise")
 
     def __repr__(self) -> str:
         return f"<Exercise id={self.id} name={self.name} calories_per_hour={self.calories_per_hour}>"
@@ -131,7 +137,7 @@ class Report(TimestampMixin, Base):
 
     id: Mapped[int] = mapped_column(primary_key=True)
     content: Mapped[str] = mapped_column(nullable=False)
-    date: Mapped[DateTime] = mapped_column(nullable=False)
+    date = mapped_column(DateTime, nullable=False)
 
     user_id: Mapped[int] = mapped_column(ForeignKey("users.id"))
     user: Mapped["User"] = relationship(back_populates="reports")
@@ -140,31 +146,31 @@ class Report(TimestampMixin, Base):
         return f"<Report id={self.id} content={self.content} date={self.date}>"
 
 
-class UserExercise(TimestampMixin, Base):
+class ExerciseLog(TimestampMixin, Base):
     """
     Represents the many-to-many relationship between users and exercises
     """
-    __tablename__ = "user_exercises"
+    __tablename__ = "exercise_logs"
 
     id: Mapped[int] = mapped_column(primary_key=True)
     duration: Mapped[float] = mapped_column(nullable=False)
-    date: Mapped[DateTime] = mapped_column(nullable=False)
+    date = mapped_column(DateTime, nullable=False)
 
     user_id: Mapped[int] = mapped_column(ForeignKey("users.id"))
     exercise_id: Mapped[int] = mapped_column(ForeignKey("exercises.id"))
 
-    user: Mapped["User"] = relationship(back_populates="exercises")
+    user: Mapped["User"] = relationship(back_populates="exercise_logs")
     exercise: Mapped["Exercise"] = relationship(back_populates="exercise_logs")
 
     def __repr__(self) -> str:
-        return f"<UserExercise id={self.id} duration={self.duration} date={self.date}>"
+        return f"<ExerciseLog id={self.id} duration={self.duration} date={self.date}>"
 
 
 class FoodConsumption(TimestampMixin, Base):
     __tablename__ = "food_consuptions"
 
     id: Mapped[int] = mapped_column(primary_key=True)
-    quantity = Mapped[float] = mapped_column(nullable=False)
+    quantity: Mapped[float] = mapped_column(nullable=False)
     date = mapped_column(DateTime, default=datetime.utcnow, nullable=True)
 
     user_id: Mapped[int] = mapped_column(ForeignKey("users.id"))
@@ -194,7 +200,7 @@ class FoodConsumption(TimestampMixin, Base):
         return round(self.serving_size.lipids * self.quantity)
 
     def __repr__(self) -> str:
-        return f"<FoodConsumption id={self.id}>"
+        return f"<FoodConsumption id={self.id} food_name={self.food.name} calories={self.calories}>"
 
 
 Base.metadata.create_all(bind=engine)

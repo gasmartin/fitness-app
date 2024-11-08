@@ -1,12 +1,12 @@
 from enum import Enum
 
 
-class GenderTypes(Enum):
+class Genders(Enum):
     MALE = "M"
     FEMALE = "F"
 
 
-class ActivityLevelTypes(Enum):
+class ActivityLevels(Enum):
     SEDENTARY = "sedentary"
     LIGHT_EXERCISE = "lightly_active"
     MODERATE_EXERCISE = "moderately_active"
@@ -14,7 +14,7 @@ class ActivityLevelTypes(Enum):
     EXTREMELY_ACTIVE = "extremely_active"
 
 
-class GoalTypes(Enum):
+class Goals(Enum):
     LOSE_WEIGHT = "lose_weight"
     MAINTAIN_WEIGHT = "maintain_weight"
     GAIN_WEIGHT = "gain_weight"
