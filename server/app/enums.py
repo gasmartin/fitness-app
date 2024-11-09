@@ -18,10 +18,3 @@ class Goals(Enum):
     LOSE_WEIGHT = "lose_weight"
     MAINTAIN_WEIGHT = "maintain_weight"
     GAIN_WEIGHT = "gain_weight"
-
-
-class MealTypes(Enum):
-    BREAKFAST = "breakfast"
-    LUNCH = "lunch"
-    DINNER = "dinner"
-    SNACK = "snack"

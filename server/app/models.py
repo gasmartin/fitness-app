@@ -1,9 +1,8 @@
 from datetime import datetime
 from typing import List
 
-from sqlalchemy import DateTime, Enum, ForeignKey, Time
-from sqlalchemy.orm import (Mapped, declarative_base, mapped_column,
-                            relationship)
+from sqlalchemy import Date, DateTime, Enum, ForeignKey, Time
+from sqlalchemy.orm import Mapped, declarative_base, mapped_column, relationship
 
 from app.database import engine
 from app.enums import ActivityLevels, Genders, Goals
@@ -33,6 +32,7 @@ class User(TimestampMixin, Base):
     name: Mapped[str] = mapped_column(nullable=False)
     email: Mapped[str] = mapped_column(unique=True, nullable=False)
     hashed_password: Mapped[str] = mapped_column(nullable=False)
+    is_admin: Mapped[bool] = mapped_column(default=False)
 
     # Calculate BMR using Mifflin-St Jeor Equation
     gender: Mapped[Genders] = mapped_column(Enum(Genders), nullable=True)
@@ -44,6 +44,9 @@ class User(TimestampMixin, Base):
     )
     goal_type: Mapped[Goals] = mapped_column(Enum(Goals), nullable=True)
 
+    foods: Mapped[List["Food"]] = relationship(
+        back_populates="user", cascade="all, delete-orphan"
+    )
     food_consuptions: Mapped[List["FoodConsumption"]] = relationship(
         back_populates="user", cascade="all, delete-orphan"
     )
@@ -113,6 +116,9 @@ class Food(TimestampMixin, FoodComponentsMixin, Base):
     name: Mapped[str] = mapped_column(nullable=False)
     description: Mapped[str] = mapped_column(nullable=False)
 
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), nullable=True)
+    user: Mapped["User"] = relationship(back_populates="foods")
+
     serving_sizes: Mapped[List["ServingSize"]] = relationship(
         back_populates="food", cascade="all, delete-orphan"
     )
@@ -138,8 +144,8 @@ class WaterIntake(TimestampMixin, Base):
     __tablename__ = "water_intakes"
 
     id: Mapped[int] = mapped_column(primary_key=True)
-    quantity_ml: Mapped[int] = mapped_column(nullable=False)
-    date = mapped_column(DateTime, nullable=False)
+    quantity_in_liters: Mapped[float] = mapped_column(nullable=False)
+    date = mapped_column(Date, nullable=False)
 
     user_id: Mapped[int] = mapped_column(ForeignKey("users.id"))
     user: Mapped["User"] = relationship(back_populates="water_intakes")
@@ -168,8 +174,8 @@ class Report(TimestampMixin, Base):
     __tablename__ = "reports"
 
     id: Mapped[int] = mapped_column(primary_key=True)
+    date = mapped_column(Date, nullable=False, unique=True)
     content: Mapped[str] = mapped_column(nullable=False)
-    date = mapped_column(DateTime, nullable=False)
 
     user_id: Mapped[int] = mapped_column(ForeignKey("users.id"))
     user: Mapped["User"] = relationship(back_populates="reports")
@@ -187,7 +193,7 @@ class ExerciseLog(TimestampMixin, Base):
 
     id: Mapped[int] = mapped_column(primary_key=True)
     duration: Mapped[float] = mapped_column(nullable=False)
-    date = mapped_column(DateTime, nullable=False)
+    date = mapped_column(Date, nullable=False)
 
     user_id: Mapped[int] = mapped_column(ForeignKey("users.id"))
     exercise_id: Mapped[int] = mapped_column(ForeignKey("exercises.id"))
@@ -204,7 +210,7 @@ class FoodConsumption(TimestampMixin, Base):
 
     id: Mapped[int] = mapped_column(primary_key=True)
     quantity: Mapped[float] = mapped_column(nullable=False)
-    date = mapped_column(DateTime, default=datetime.utcnow, nullable=True)
+    date = mapped_column(Date, default=datetime.utcnow, nullable=True)
 
     user_id: Mapped[int] = mapped_column(ForeignKey("users.id"))
     food_id: Mapped[int] = mapped_column(ForeignKey("foods.id"))

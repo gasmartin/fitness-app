@@ -6,8 +6,13 @@ from sqlalchemy.orm import Session
 from app.dependencies.auth import get_current_user
 from app.dependencies.database import get_db
 from app.models import WaterIntake
-from app.schemas import (SimpleResultMessage, UserRead, WaterIntakeCreate,
-                         WaterIntakeRead, WaterIntakeUpdate)
+from app.schemas import (
+    SimpleResultMessage,
+    UserRead,
+    WaterIntakeCreate,
+    WaterIntakeRead,
+    WaterIntakeUpdate,
+)
 
 router = APIRouter(
     prefix="/water-intakes",

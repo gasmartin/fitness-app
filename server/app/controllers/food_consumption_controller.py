@@ -1,14 +1,18 @@
-from datetime import date
-from typing import List, Optional
+from typing import List
 
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
 from app.dependencies.auth import get_current_user
 from app.dependencies.database import get_db
 from app.models import FoodConsumption
-from app.schemas import (FoodConsumptionCreate, FoodConsumptionRead,
-                         FoodConsumptionUpdate, SimpleResultMessage, UserRead)
+from app.schemas import (
+    FoodConsumptionCreate,
+    FoodConsumptionRead,
+    FoodConsumptionUpdate,
+    SimpleResultMessage,
+    UserRead,
+)
 
 router = APIRouter(
     prefix="/food-consumptions",
@@ -19,16 +23,10 @@ router = APIRouter(
 
 @router.get("/", response_model=List[FoodConsumptionRead])
 def get_food_comsuptions(
-    date: Optional[date] = Query(None, description="Fetch consumptions from this date"),
     current_user: UserRead = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    query = db.query(FoodConsumption)
-
-    if date:
-        query = query.filter(FoodConsumption.date == date)
-
-    return query.all()
+    return db.query(FoodConsumption).all()
 
 
 @router.get("/{food_consumption_id}", response_model=FoodConsumptionRead)

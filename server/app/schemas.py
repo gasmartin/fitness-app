@@ -1,4 +1,4 @@
-from datetime import date, datetime, time
+from datetime import date, time
 from typing import List, Optional
 
 from pydantic import BaseModel
@@ -27,13 +27,15 @@ class UserPhysiology(BaseModel):
 class UserBase(UserPhysiology):
     name: str
     email: str
+    is_admin: bool
 
 
 class UserCreate(UserBase):
+    is_admin: Optional[bool] = None
     password: str
 
 
-class UserUpdate(UserCreate):
+class UserUpdate(UserPhysiology):
     name: Optional[str] = None
     email: Optional[str] = None
     password: Optional[str] = None
@@ -89,12 +91,12 @@ class FoodRead(BaseFood):
 
 class WaterIntakeCreate(BaseModel):
     quantity_ml: int
-    date: datetime
+    date: date
 
 
 class WaterIntakeUpdate(BaseModel):
     quantity_ml: Optional[int] = None
-    date: Optional[datetime] = None
+    date: Optional[date] = None
 
 
 class WaterIntakeRead(WaterIntakeCreate):
@@ -123,12 +125,14 @@ class ExerciseRead(ExerciseCreate):
 
 class ExerciseLogCreate(BaseModel):
     duration: float
-    date: datetime
+    date: date
+    exercise_id: int
 
 
 class ExerciseLogUpdate(BaseModel):
     duration: Optional[float] = None
-    date: Optional[datetime] = None
+    date: Optional[date] = None
+    exercise_id: Optional[int] = None
 
 
 class ExerciseLogRead(ExerciseLogCreate):
@@ -162,3 +166,27 @@ class FoodConsumptionRead(FoodConsumptionCreate):
 
     class Config:
         from_attributes = True
+
+
+class ReportCreate(BaseModel):
+    date: date
+
+
+class ReportUpdate(BaseModel):
+    content: str
+
+
+class ReportRead(ReportCreate):
+    id: int
+
+    class Config:
+        from_attributes = True
+
+
+class UserDailyOverview(BaseModel):
+    total_calories_intake: float
+    total_water_intake: float
+    total_calories_burned: float
+    food_consumptions: List[FoodConsumptionRead]
+    water_intakes: List[WaterIntakeRead]
+    exercise_logs: List[ExerciseLogRead]
