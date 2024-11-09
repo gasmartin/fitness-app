@@ -7,24 +7,12 @@ from fastapi.security import OAuth2PasswordRequestForm
 from jose import JWTError, jwt
 from sqlalchemy.orm import Session
 
-from app.constants import (
-    ACCESS_TOKEN_EXPIRE_IN_MINUTES,
-    ALGORITHM,
-    SECRET_KEY,
-)
+from app.constants import ACCESS_TOKEN_EXPIRE_IN_MINUTES, ALGORITHM, SECRET_KEY
 from app.dependencies.auth import get_current_user, oauth2_scheme
 from app.dependencies.database import get_db
 from app.models import User
-from app.schemas import (
-    Token,
-    UserRead,
-    UserCreate,
-    UserUpdate,
-    ExerciseRead,
-    ExerciseLogRead,
-    SimpleResultMessage
-)
-
+from app.schemas import (ExerciseLogRead, ExerciseRead, SimpleResultMessage,
+                         Token, UserCreate, UserRead, UserUpdate)
 
 router = APIRouter(
     prefix="/users",
@@ -99,28 +87,30 @@ async def login(
 
 @router.post("/", response_model=Token)
 async def create_user(user: UserCreate, db: Session = Depends(get_db)):
-    user_db = User(
-        name=user.name,
-        email=user.email,
-        hashed_password=await get_password_hash(user.password),
-    )
+    hashed_password = await get_password_hash(user.password)
+
+    user_db = User(name=user.name, email=user.email, hashed_password=hashed_password)
+
     db.add(user_db)
     db.commit()
     db.refresh(user_db)
-    access_token_expires = timedelta(minutes=ACCESS_TOKEN_EXPIRE_IN_MINUTES)
+
+    expires_delta = timedelta(minutes=ACCESS_TOKEN_EXPIRE_IN_MINUTES)
+
     access_token = await create_access_token(
-        data={"sub": user_db.email}, expires_delta=access_token_expires
+        data={"sub": user_db.email}, expires_delta=expires_delta
     )
+
     return {"access_token": access_token, "token_type": "bearer"}
 
 
 @router.get("/", response_model=List[UserRead])
-async def read_users(db: Session = Depends(get_db)):
+async def get_users(db: Session = Depends(get_db)):
     return db.query(User).all()
 
 
 @router.get("/me", response_model=UserRead)
-async def read_users_me(
+async def get_current_logged_user(
     current_user: UserRead = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
@@ -138,22 +128,34 @@ async def read_user(user_id: int, db: Session = Depends(get_db)):
 
 
 @router.get("/{user_id}/exercises", response_model=List[ExerciseRead])
-def get_exercises_by_user_id(user_id: int, current_user: UserRead = Depends(get_current_user), db: Session = Depends(get_db)):
+def get_exercises_by_user_id(
+    user_id: int,
+    current_user: UserRead = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
     user_db = db.query(User).filter(User.id == user_id).first()
 
     if not user_db:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="User not found"
+        )
 
     return user_db.exercises
 
 
 @router.get("/{user_id}/exercise-logs", response_model=List[ExerciseLogRead])
-def get_exercise_logs_by_user_id(user_id: int, current_user: UserRead = Depends(get_current_user), db: Session = Depends(get_db)):
+def get_exercise_logs_by_user_id(
+    user_id: int,
+    current_user: UserRead = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
     user_db = db.query(User).filter(User.id == user_id).first()
 
     if not user_db:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
-    
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="User not found"
+        )
+
     return current_user.exercise_logs
 
 
@@ -194,3 +196,10 @@ async def delete_user(user_id: int, db: Session = Depends(get_db)):
     db.delete(user_db)
     db.commit()
     return {"message": "User deleted successfully"}
+
+
+@router.get("/me/has-provided-physiology-information", response_model=Dict[str, bool])
+async def check_physiology_information(
+    current_user: UserRead = Depends(get_current_user),
+):
+    return {"result": current_user.has_physiology_information}

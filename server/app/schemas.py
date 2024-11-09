@@ -1,9 +1,9 @@
-from datetime import datetime, time
+from datetime import date, datetime, time
 from typing import List, Optional
 
 from pydantic import BaseModel
 
-from app.enums import ActivityLevels, Genders, Goals, MealTypes
+from app.enums import ActivityLevels, Genders, Goals
 
 
 class SimpleResultMessage(BaseModel):
@@ -73,7 +73,7 @@ class BaseFood(BaseModel):
 
 class ServingSizeRead(BaseFood):
     id: int
-    
+
     class Config:
         from_attributes = True
 
@@ -133,6 +133,32 @@ class ExerciseLogUpdate(BaseModel):
 
 class ExerciseLogRead(ExerciseLogCreate):
     id: int
+
+    class Config:
+        from_attributes = True
+
+
+class FoodConsumptionCreate(BaseModel):
+    quantity: float
+    date: date
+    food_id: int
+    meal_id: int
+    serving_size_id: int
+
+
+class FoodConsumptionUpdate(BaseModel):
+    quantity: Optional[float] = None
+    date: Optional[date] = None
+    food_id: Optional[int] = None
+    meal_id: Optional[int] = None
+    serving_size_id: Optional[int] = None
+
+
+class FoodConsumptionRead(FoodConsumptionCreate):
+    id: int
+    food: FoodRead
+    meal: MealRead
+    serving_size: ServingSizeRead
 
     class Config:
         from_attributes = True

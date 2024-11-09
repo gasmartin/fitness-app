@@ -2,14 +2,12 @@ import json
 from typing import Union
 
 from app.constants import POPULATE_DB_JSON_FILE_PATH
-from app.enums import (
-    ActivityLevels, 
-    Genders,
-    Goals,
-)
+from app.enums import ActivityLevels, Genders, Goals
 
 
-def calculate_bmr(gender: Union[str, Genders], age: int, height: int, weight: float) -> int:
+def calculate_bmr(
+    gender: Union[str, Genders], age: int, height: int, weight: float
+) -> int:
     """
     This method will calculate the Basal Metabolic Rate (BMR) of the user
     using the Mifflin-St Jeor Equation
@@ -55,7 +53,7 @@ def calculate_goal_calories(tdee: int, goal_type: Union[str, Goals]) -> int:
     """
     goal_type = Goals(goal_type)
     if goal_type is Goals.LOSE_WEIGHT:
-        goal_calories = tdee * .8
+        goal_calories = tdee * 0.8
     elif goal_type is Goals.MAINTAIN_WEIGHT:
         goal_calories = tdee
     elif goal_type is Goals.GAIN_WEIGHT:
@@ -68,20 +66,20 @@ def calculate_goal_calories(tdee: int, goal_type: Union[str, Goals]) -> int:
 def populate_database():
     from app.database import SessionLocal
     from app.models import Food, ServingSize
-    
+
     with open(POPULATE_DB_JSON_FILE_PATH, "r") as json_file:
         food_data = json.load(json_file)
 
     db = SessionLocal()
 
-    for food_item in food_data:        
+    for food_item in food_data:
         food = Food(
             name=food_item["name"],
             description=food_item["description"],
             calories=food_item.get("kcal"),
             carbohydrates=food_item.get("carbohydrates"),
             proteins=food_item.get("protein"),
-            lipids=food_item.get("lipids")
+            lipids=food_item.get("lipids"),
         )
 
         for serving_size_item in food_item.get("portions", []):
@@ -90,7 +88,7 @@ def populate_database():
                 calories=serving_size_item.get("kcal"),
                 carbohydrates=serving_size_item.get("carbohydrates"),
                 proteins=serving_size_item.get("protein"),
-                lipids=serving_size_item.get("lipids")
+                lipids=serving_size_item.get("lipids"),
             )
             food.serving_sizes.append(serving_size)
 

@@ -6,14 +6,8 @@ from sqlalchemy.orm import Session
 from app.dependencies.auth import get_current_user
 from app.dependencies.database import get_db
 from app.models import Meal
-from app.schemas import (
-    MealRead,
-    MealCreate,
-    MealUpdate,
-    UserRead,
-    SimpleResultMessage,
-)
-
+from app.schemas import (MealCreate, MealRead, MealUpdate, SimpleResultMessage,
+                         UserRead)
 
 router = APIRouter(
     prefix="/meals",

@@ -1,12 +1,11 @@
 from datetime import date
 from typing import Dict, Union
 
-from fastapi import APIRouter, Query, Depends
+from fastapi import APIRouter, Depends, Query
 
 from app.dependencies.auth import get_current_user
 from app.schemas import UserRead
-from app.utils import calculate_bmr, calculate_tdee, calculate_goal_calories
-
+from app.utils import calculate_bmr, calculate_goal_calories, calculate_tdee
 
 router = APIRouter(
     tags=["utility"],
@@ -14,9 +13,7 @@ router = APIRouter(
 )
 
 
-@router.get(
-    "/get-goal-calories-preview", response_model=Dict[str, int]
-)
+@router.get("/get-goal-calories-preview", response_model=Dict[str, int])
 async def get_goal_calories_preview(
     gender: str = Query,
     age: int = Query,
