@@ -9,7 +9,6 @@ from app.models import Report
 from app.schemas import (
     ReportCreate,
     ReportRead,
-    ReportUpdate,
     SimpleResultMessage,
     UserRead,
 )

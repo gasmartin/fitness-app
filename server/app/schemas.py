@@ -172,10 +172,6 @@ class ReportCreate(BaseModel):
     date: date
 
 
-class ReportUpdate(BaseModel):
-    content: str
-
-
 class ReportRead(ReportCreate):
     id: int
 
