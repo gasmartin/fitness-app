@@ -6,26 +6,37 @@ from pydantic import BaseModel
 from app.enums import ActivityLevels, Genders, Goals
 
 
-class SimpleResultMessage(BaseModel):
+def to_camel(string):
+    components = string.split('_')
+    return components[0] + ''.join(x.title() for x in components[1:])
+
+
+class CamelCaseModel(BaseModel):
+    class Config:
+        alias_generator = to_camel
+        populate_by_name = True
+
+
+class SimpleResultMessage(CamelCaseModel):
     message: str
 
 
-class RefreshTokenRequest(BaseModel):
+class RefreshTokenRequest(CamelCaseModel):
     refresh_token: str
 
 
-class RefreshTokenResponse(BaseModel):
+class RefreshTokenResponse(CamelCaseModel):
     access_token: str
     token_type: str
 
 
-class TokenResponse(BaseModel):
+class TokenResponse(CamelCaseModel):
     access_token: str
     refresh_token: str
     token_type: str
 
 
-class UserPhysiology(BaseModel):
+class UserPhysiology(CamelCaseModel):
     gender: Optional[Genders] = None
     age: Optional[int] = None
     height: Optional[float] = None
@@ -58,12 +69,12 @@ class UserRead(UserBase):
         from_attributes = True
 
 
-class MealCreate(BaseModel):
+class MealCreate(CamelCaseModel):
     name: str
     default_time: time
 
 
-class MealUpdate(BaseModel):
+class MealUpdate(CamelCaseModel):
     name: Optional[str] = None
     default_time: Optional[time] = None
 
@@ -75,7 +86,7 @@ class MealRead(MealCreate):
         from_attributes = True
 
 
-class BaseFood(BaseModel):
+class BaseFood(CamelCaseModel):
     name: str
     calories: Optional[float]
     carbohydrates: Optional[float]
@@ -98,7 +109,7 @@ class FoodUpdate(BaseFood):
     pass
 
 
-class FoodSearch:
+class FoodSearch(CamelCaseModel):
     id: int
     name: str
     description: str
@@ -113,12 +124,12 @@ class FoodRead(BaseFood):
         from_attributes = True
 
 
-class WaterIntakeCreate(BaseModel):
+class WaterIntakeCreate(CamelCaseModel):
     quantity_in_liters: float
     intake_date: date
 
 
-class WaterIntakeUpdate(BaseModel):
+class WaterIntakeUpdate(CamelCaseModel):
     quantity_in_liters: Optional[float] = None
     intake_date: Optional[date] = None
 
@@ -130,12 +141,12 @@ class WaterIntakeRead(WaterIntakeCreate):
         from_attributes = True
 
 
-class ExerciseCreate(BaseModel):
+class ExerciseCreate(CamelCaseModel):
     name: str
     calories_per_hour: int
 
 
-class ExerciseUpdate(BaseModel):
+class ExerciseUpdate(CamelCaseModel):
     name: Optional[str] = None
     calories_per_hour: Optional[int] = None
 
@@ -147,13 +158,13 @@ class ExerciseRead(ExerciseCreate):
         from_attributes = True
 
 
-class ExerciseLogCreate(BaseModel):
+class ExerciseLogCreate(CamelCaseModel):
     duration_in_hours: float
     practice_date: date
     exercise_id: int
 
 
-class ExerciseLogUpdate(BaseModel):
+class ExerciseLogUpdate(CamelCaseModel):
     duration_in_hours: Optional[float] = None
     practice_date: Optional[date] = None
     exercise_id: Optional[int] = None
@@ -166,7 +177,7 @@ class ExerciseLogRead(ExerciseLogCreate):
         from_attributes = True
 
 
-class FoodConsumptionCreate(BaseModel):
+class FoodConsumptionCreate(CamelCaseModel):
     quantity: float
     consumption_date: date
     food_id: int
@@ -174,7 +185,7 @@ class FoodConsumptionCreate(BaseModel):
     serving_size_id: int
 
 
-class FoodConsumptionUpdate(BaseModel):
+class FoodConsumptionUpdate(CamelCaseModel):
     quantity: Optional[float] = None
     consumption_date: Optional[date] = None
     food_id: Optional[int] = None
@@ -192,7 +203,7 @@ class FoodConsumptionRead(FoodConsumptionCreate):
         from_attributes = True
 
 
-class ReportCreate(BaseModel):
+class ReportCreate(CamelCaseModel):
     report_date: date
 
 
@@ -203,7 +214,7 @@ class ReportRead(ReportCreate):
         from_attributes = True
 
 
-class UserDailyOverview(BaseModel):
+class UserDailyOverview(CamelCaseModel):
     total_calories_intake: float
     total_water_intake: float
     total_calories_burned: float
