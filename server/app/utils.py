@@ -1,7 +1,7 @@
 import json
 from typing import Union
 
-from app.constants import POPULATE_DB_JSON_FILE_PATH
+from app.constants import DEFAULT_EXERCISES, POPULATE_DB_JSON_FILE_PATH
 from app.enums import ActivityLevels, Genders, Goals
 
 
@@ -65,7 +65,7 @@ def calculate_goal_calories(tdee: int, goal_type: Union[str, Goals]) -> int:
 
 def populate_database():
     from app.database import SessionLocal
-    from app.models import Food, ServingSize
+    from app.models import Exercise, Food, ServingSize
 
     with open(POPULATE_DB_JSON_FILE_PATH, "r") as json_file:
         food_data = json.load(json_file)
@@ -93,6 +93,9 @@ def populate_database():
             food.serving_sizes.append(serving_size)
 
         db.add(food)
+    
+    for exercise_data in DEFAULT_EXERCISES:
+        db.add(Exercise(**exercise_data))
 
     db.commit()
     db.close()

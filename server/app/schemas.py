@@ -10,8 +10,18 @@ class SimpleResultMessage(BaseModel):
     message: str
 
 
-class Token(BaseModel):
+class RefreshTokenRequest(BaseModel):
+    refresh_token: str
+
+
+class RefreshTokenResponse(BaseModel):
     access_token: str
+    token_type: str
+
+
+class TokenResponse(BaseModel):
+    access_token: str
+    refresh_token: str
     token_type: str
 
 
@@ -78,6 +88,20 @@ class ServingSizeRead(BaseFood):
 
     class Config:
         from_attributes = True
+        
+
+class FoodCreate(BaseFood):
+    description: str
+
+
+class FoodUpdate(BaseFood):
+    pass
+
+
+class FoodSearch:
+    id: int
+    name: str
+    description: str
 
 
 class FoodRead(BaseFood):
@@ -90,13 +114,13 @@ class FoodRead(BaseFood):
 
 
 class WaterIntakeCreate(BaseModel):
-    quantity_ml: int
-    date: date
+    quantity_in_liters: float
+    intake_date: date
 
 
 class WaterIntakeUpdate(BaseModel):
-    quantity_ml: Optional[int] = None
-    date: Optional[date] = None
+    quantity_in_liters: Optional[float] = None
+    intake_date: Optional[date] = None
 
 
 class WaterIntakeRead(WaterIntakeCreate):
@@ -124,14 +148,14 @@ class ExerciseRead(ExerciseCreate):
 
 
 class ExerciseLogCreate(BaseModel):
-    duration: float
-    date: date
+    duration_in_hours: float
+    practice_date: date
     exercise_id: int
 
 
 class ExerciseLogUpdate(BaseModel):
-    duration: Optional[float] = None
-    date: Optional[date] = None
+    duration_in_hours: Optional[float] = None
+    practice_date: Optional[date] = None
     exercise_id: Optional[int] = None
 
 
@@ -144,7 +168,7 @@ class ExerciseLogRead(ExerciseLogCreate):
 
 class FoodConsumptionCreate(BaseModel):
     quantity: float
-    date: date
+    consumption_date: date
     food_id: int
     meal_id: int
     serving_size_id: int
@@ -152,7 +176,7 @@ class FoodConsumptionCreate(BaseModel):
 
 class FoodConsumptionUpdate(BaseModel):
     quantity: Optional[float] = None
-    date: Optional[date] = None
+    consumption_date: Optional[date] = None
     food_id: Optional[int] = None
     meal_id: Optional[int] = None
     serving_size_id: Optional[int] = None
@@ -169,7 +193,7 @@ class FoodConsumptionRead(FoodConsumptionCreate):
 
 
 class ReportCreate(BaseModel):
-    date: date
+    report_date: date
 
 
 class ReportRead(ReportCreate):

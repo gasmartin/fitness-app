@@ -1,3 +1,6 @@
+from datetime import datetime
+from typing import Any, Dict
+
 from fastapi import Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer
 from jose import JWTError, jwt
@@ -10,32 +13,34 @@ from app.models import User
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="login")
 
 
-async def get_current_user(
-    token: str = Depends(oauth2_scheme), db: Session = Depends(get_db)
-):
+def verify_token(token: str) -> Dict[str, Any] | None:
+    try:
+        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+
+        exp = payload.get("exp")
+        if exp and datetime.utcnow() >= datetime.utcfromtimestamp(exp):
+            return None
+
+        return payload
+    except JWTError:
+        return None
+
+
+def get_current_user(token: str = Depends(oauth2_scheme), db: Session = Depends(get_db)):
     credentials_exception = HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,
         detail="Could not validate credentials",
         headers={"WWW-Authenticate": "Bearer"},
     )
 
-    try:
-        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
-        email = payload.get("sub")
-        if email is None:
-            raise credentials_exception
-    except JWTError:
+    payload = verify_token(token)
+
+    if not payload or not (email := payload.get("sub")):
         raise credentials_exception
 
-    user = db.query(User).filter(User.email == email).first()
-    if user is None:
+    user_db = db.query(User).filter(User.email == email).first()
+
+    if not user_db:
         raise credentials_exception
-    return user
 
-
-async def get_current_user_with_info(current_user: User = Depends(get_current_user)):
-    if not current_user.has_provided_info:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST, detail="User has not provided info"
-        )
-    return current_user
+    return user_db

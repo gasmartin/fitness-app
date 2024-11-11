@@ -18,7 +18,7 @@ from app.utils import populate_database
 
 load_dotenv()
 
-app = FastAPI(title="NutriTrack Server", version="1.0.0")
+app = FastAPI(title="NutriTrack Server", version="2.0.0")
 
 origins = [
     "http://localhost",
@@ -50,5 +50,5 @@ async def root():
 
 @app.on_event("startup")
 async def startup_event():
-    if os.getenv("NUTRITRACK_POPULATE_DATABASE"):
+    if os.getenv("NUTRITRACK_POPULATE_DATABASE", "").lower() in ("true", "1"):
         populate_database()

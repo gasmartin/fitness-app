@@ -6,11 +6,18 @@ from typing import Any, Dict, List, Optional
 import bcrypt
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from fastapi.security import OAuth2PasswordRequestForm
-from jose import JWTError, jwt
+from jose import jwt
 from sqlalchemy.orm import Session
 
-from app.constants import ACCESS_TOKEN_EXPIRE_IN_MINUTES, ALGORITHM, SECRET_KEY
-from app.dependencies.auth import get_current_user, oauth2_scheme
+from app.constants import (
+    ACCESS_TOKEN_EXPIRE_IN_MINUTES,
+    ALGORITHM,
+    DEFAULT_MEALS,
+    ENCODING,
+    REFRESH_TOKEN_EXPIRE_DAYS,
+    SECRET_KEY
+)
+from app.dependencies.auth import get_current_user, verify_token
 from app.dependencies.database import get_db
 from app.models import (
     User,
@@ -27,10 +34,13 @@ from app.schemas import (
     ExerciseRead,
     FoodRead,
     FoodConsumptionRead,
+    MealCreate,
     MealRead,
     ReportRead,
     SimpleResultMessage,
-    Token,
+    RefreshTokenRequest,
+    RefreshTokenResponse,
+    TokenResponse,
     UserCreate,
     UserDailyOverview,
     UserRead,
@@ -45,68 +55,65 @@ router = APIRouter(
 )
 
 
-async def create_access_token(
-    data: Dict[str, Any], expires_delta: Optional[timedelta] = None
-) -> str:
+def create_token(data: Dict[str, Any], expires_delta: timedelta) -> str:
     to_encode = data.copy()
-    if expires_delta is not None:
-        expire = datetime.utcnow() + expires_delta
-    else:
-        expires_delta = datetime.utcnow() + timedelta(minutes=15)
+    expire = datetime.utcnow() + expires_delta
     to_encode.update({"exp": expire})
-    encoded_jwt = jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
-    return encoded_jwt
+    return jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
 
 
-async def verify_password(plain_password: str, hashed_password: str):
+def create_access_token(data: Dict[str, Any]):
+    data["type"] = "access"
+    return create_token(data, timedelta(minutes=ACCESS_TOKEN_EXPIRE_IN_MINUTES))
+
+
+def create_refresh_token(data: Dict[str, Any]) -> str:
+    data["type"] = "refresh"
+    return create_token(data, timedelta(days=REFRESH_TOKEN_EXPIRE_DAYS))
+
+
+def verify_password(plain_password: str, hashed_password: str):
     try:
-        return bcrypt.checkpw(
-            plain_password.encode("utf-8"), hashed_password.encode("utf-8")
-        )
+        return bcrypt.checkpw(plain_password.encode(ENCODING), hashed_password.encode(ENCODING))
     except ValueError:
         return False
 
 
-async def get_password_hash(password: str):
-    salt = bcrypt.gensalt()
-    return bcrypt.hashpw(password.encode("utf-8"), salt).decode("utf-8")
+def get_password_hash(password: str):
+    return bcrypt.hashpw(password.encode(ENCODING), bcrypt.gensalt()).decode(ENCODING)
 
 
-@router.get("/check-token")
-async def check_token(token: str = Depends(oauth2_scheme)):
-    credentials_exception = HTTPException(
-        status_code=status.HTTP_401_UNAUTHORIZED,
-        detail="Token is invalid or expired",
-        headers={"WWW-Authenticate": "Bearer"},
-    )
-    try:
-        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
-        email: str = payload.get("sub")
-        if email is None:
-            raise credentials_exception
-        return {"message": "Token is valid"}
-    except JWTError:
-        raise credentials_exception
+@router.post("/refresh-token", response_model=RefreshTokenResponse)
+async def refresh_token(request: RefreshTokenRequest):
+    payload = verify_token(request.refresh_token)
+
+    if not payload or payload.get("type") != "refresh":
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Token is invalid")
+
+    new_access_token = create_access_token(data={"sub": payload.get("sub")})
+
+    return {"access_token": new_access_token, "token_type": "bearer"}
 
 
-@router.post("/login", response_model=Token)
+@router.post("/login", response_model=TokenResponse)
 async def login(
     form_data: OAuth2PasswordRequestForm = Depends(), db: Session = Depends(get_db)
 ):
     user_db = db.query(User).filter(User.email == form_data.username).first()
-    if user_db is None or not await verify_password(
-        form_data.password, user_db.hashed_password
-    ):
+
+    if not user_db or not verify_password(form_data.password, user_db.hashed_password):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Incorrect email or password",
             headers={"WWW-Authenticate": "Bearer"},
         )
-    access_token_expires = timedelta(minutes=ACCESS_TOKEN_EXPIRE_IN_MINUTES)
-    access_token = await create_access_token(
-        data={"sub": user_db.email}, expires_delta=access_token_expires
-    )
-    return {"access_token": access_token, "token_type": "bearer"}
+
+    token_data = {"sub": user_db.email}
+
+    access_token = create_access_token(token_data)
+    refresh_token = create_refresh_token(token_data)
+
+    return {"access_token": access_token, "refresh_token": refresh_token, "token_type": "bearer"}
 
 
 @router.get("/me", response_model=UserRead)
@@ -126,7 +133,7 @@ async def update_current_user(
     for key, value in user.dict(exclude_unset=True).items():
         if key == "password":
             key = "hashed_password"
-            value = await get_password_hash(value)
+            value = get_password_hash(value)
         setattr(current_user, key, value)
 
     db.commit()
@@ -187,7 +194,7 @@ async def get_user_exercise_logs(
     query = db.query(ExerciseLog).filter(ExerciseLog.user_id == current_user.id)
 
     if date:
-        query.filter(ExerciseLog.date == date)
+        query = query.filter(ExerciseLog.practice_date == date)
 
     return query.all()
 
@@ -201,7 +208,7 @@ async def get_user_water_intakes(
     query = db.query(WaterIntake).filter(WaterIntake.user_id == current_user.id)
 
     if date:
-        query.filter(WaterIntake.date == date)
+        query = query.filter(WaterIntake.intake_date == date)
 
     return query.all()
 
@@ -215,14 +222,14 @@ async def get_user_food_consumptions(
     query = db.query(FoodConsumption).filter(FoodConsumption.user_id == current_user.id)
 
     if date:
-        query.filter(FoodConsumption.date == date)
+        query = query.filter(FoodConsumption.consumption_date == date)
 
     return query.all()
 
 
 @router.get("/me/daily-overview", response_model=UserDailyOverview)
 async def get_user_daily_overview(
-    date: Optional[date] = Query(None, description="Date to overview"),
+    date: date = Query(description="Date to overview"),
     current_user: UserRead = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
@@ -239,7 +246,7 @@ async def get_user_daily_overview(
         lambda total, wi: total + wi.quantity_in_liters, water_intakes, 0.0
     )
     total_calories_burned = reduce(
-        lambda total, el: total + (el.duration * el.exercise.calories_per_hour),
+        lambda total, el: total + (el.duration_in_hours * el.exercise.calories_per_hour),
         exercise_logs,
         0.0,
     )
@@ -261,9 +268,9 @@ async def check_physiology_information(
     return {"result": current_user.has_physiology_information}
 
 
-@router.post("/", response_model=Token)
+@router.post("/", response_model=TokenResponse)
 async def create_user(user: UserCreate, db: Session = Depends(get_db)):
-    hashed_password = await get_password_hash(user.password)
+    hashed_password = get_password_hash(user.password)
 
     user_db = User(name=user.name, email=user.email, hashed_password=hashed_password)
 
@@ -271,17 +278,20 @@ async def create_user(user: UserCreate, db: Session = Depends(get_db)):
         # You can set whether the user is admin or not when env is not production
         user_db.is_admin = user.is_admin
 
+    for meal_data in DEFAULT_MEALS:
+        meal_data = MealCreate(**meal_data).dict()
+        user_db.meals.append(Meal(**meal_data))
+
     db.add(user_db)
     db.commit()
     db.refresh(user_db)
 
-    expires_delta = timedelta(minutes=ACCESS_TOKEN_EXPIRE_IN_MINUTES)
+    token_data = {"sub": user_db.email}
 
-    access_token = await create_access_token(
-        data={"sub": user_db.email}, expires_delta=expires_delta
-    )
+    access_token = create_access_token(token_data)
+    refresh_token = create_refresh_token(token_data)
 
-    return {"access_token": access_token, "token_type": "bearer"}
+    return {"access_token": access_token, "refresh_token": refresh_token, "token_type": "bearer"}
 
 
 @router.get("/", response_model=List[UserRead])
@@ -305,7 +315,6 @@ async def get_user_by_id(user_id: int, db: Session = Depends(get_db)):
 async def update_user(
     user_id: int,
     user: UserUpdate,
-    current_user: UserRead = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
     user_db = db.query(User).filter(User.id == user_id).first()
@@ -318,7 +327,7 @@ async def update_user(
     for key, value in user.dict(exclude_unset=True).items():
         if key == "password":
             key = "hashed_password"
-            value = await get_password_hash(value)
+            value = get_password_hash(value)
         setattr(user_db, key, value)
 
     db.commit()
@@ -330,7 +339,6 @@ async def update_user(
 @router.delete("/{user_id}", response_model=SimpleResultMessage)
 async def delete_user(
     user_id: int,
-    current_user: UserRead = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
     user_db = db.query(User).filter(User.id == user_id).first()

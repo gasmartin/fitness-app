@@ -68,6 +68,8 @@ def update_water_intake(
     current_user: UserRead = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
+    print(water_intake)
+
     water_intake_db = (
         db.query(WaterIntake).filter(WaterIntake.id == water_intake_id).first()
     )
@@ -75,6 +77,11 @@ def update_water_intake(
     if not water_intake_db:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND, detail="Water intake not found"
+        )
+
+    if water_intake_db.user_id != current_user.id and not current_user.is_admin:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN, detail="You do not have permission to update this water intake"
         )
 
     for key, value in water_intake.dict(exclude_unset=True).items():
@@ -99,6 +106,11 @@ def delete_water_intake(
     if not water_intake_db:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND, detail="Water intake not found"
+        )
+
+    if water_intake_db.user_id != current_user.id and not current_user.is_admin:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN, detail="You do not have permission to delete this water intake"
         )
 
     db.delete(water_intake_db)

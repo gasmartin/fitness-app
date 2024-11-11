@@ -51,7 +51,7 @@ async def create_report(
     current_user: UserRead = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    report_db = db.query(Report).filter(Report.date == report.date).first()
+    report_db = db.query(Report).filter(Report.report_date == report.report_date).first()
 
     if report_db and (
         report_db.user_id != current_user.id and not current_user.is_admin
@@ -68,7 +68,7 @@ async def create_report(
     if report_db:
         report_db.content = content
     else:
-        report_db = Report(date=report.date, content=content, user_id=current_user.id)
+        report_db = Report(content=content, report_date=report.report_date, user_id=current_user.id)
 
         db.add(report_db)
 

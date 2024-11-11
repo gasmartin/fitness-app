@@ -73,6 +73,8 @@ def update_food_consumption(
     current_user: UserRead = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
+    print(food_consumption)
+
     food_consumption_db = (
         db.query(FoodConsumption)
         .filter(FoodConsumption.id == food_consumption_id)
