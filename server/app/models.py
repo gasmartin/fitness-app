@@ -68,15 +68,18 @@ class User(TimestampMixin, Base):
 
     @property
     def bmr(self) -> int:
-        return calculate_bmr(self.gender, self.age, self.height, self.weight)
+        if self.has_physiology_information:
+            return calculate_bmr(self.gender, self.age, self.height, self.weight)
 
     @property
     def tdee(self) -> int:
-        return calculate_tdee(self.bmr, self.activity_level)
+        if self.has_physiology_information:
+            return calculate_tdee(self.bmr, self.activity_level)
 
     @property
     def goal_calories(self) -> int:
-        return calculate_goal_calories(self.tdee, self.goal_type)
+        if self.has_physiology_information:
+            return calculate_goal_calories(self.tdee, self.goal_type)
 
     @property
     def has_physiology_information(self) -> bool:

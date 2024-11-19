@@ -1,10 +1,12 @@
 import React, { useRef, useState } from 'react';
+import { CommonActions } from '@react-navigation/native';
 import { View, Text, TextInput, Keyboard, TouchableWithoutFeedback, TouchableOpacity, StyleSheet } from 'react-native';
 import { RadioButton } from 'react-native-paper';
 import DropDownPicker from 'react-native-dropdown-picker';
 
+import api from '../axiosConfig';
 
-const InitialForm = ({ navigation: { navigate } }) => {
+const InitialForm = ({ navigation }) => {
     const genderInputRef = useRef(null);
     const ageInputRef = useRef(null);
     const heightInputRef = useRef(null);
@@ -17,7 +19,7 @@ const InitialForm = ({ navigation: { navigate } }) => {
     const [isActivityLevelDropdownOpen, setIsActivityLevelDropdownOpen] = useState(false);
     const [isGoalTypeDropdownOpen, setIsGoalTypeDropdownOpen] = useState(false);
 
-    const handleContinue = () => {
+    const handleContinue = async () => {
         const age = ageInputRef.current.value;
         const height = heightInputRef.current.value;
         const weight = weightInputRef.current.value;
@@ -36,7 +38,7 @@ const InitialForm = ({ navigation: { navigate } }) => {
         parsedHeight = parseInt(parsedHeight);
 
         const userInfo = {
-            gender: gender,
+            gender,
             age: parseInt(age),
             height: parsedHeight,
             weight: parseFloat(weight),
@@ -44,6 +46,17 @@ const InitialForm = ({ navigation: { navigate } }) => {
             goalType,
         };
 
+        try {
+            const response = await api.put(`/users/me`, { ...userInfo });
+
+            const { goalCalories, goalType  } = response.data;
+
+            navigation.dispatch(CommonActions.reset({ index: 0, routes: [{ name: 'Summary', params: { goalCalories, goalType } }] }));
+        }
+        catch (err) {
+            console.log(err);
+        }
+        
         navigate("Summary", { userInfo });
     };
 

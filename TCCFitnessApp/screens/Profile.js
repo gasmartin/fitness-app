@@ -10,7 +10,7 @@ const Profile = ({ navigation }) => {
     const [weight, setWeight] = useState(user.weight.toFixed(1).toString());
 
     const parseWeight = (weight) => {
-        return parseFloat(weight.replace(',', '.')).toFixed(1);
+        return parseFloat(weight?.replace(',', '.')).toFixed(1);
     }
 
     const handleSave = async () => {

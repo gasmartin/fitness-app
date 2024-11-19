@@ -1,12 +1,23 @@
 import React, { useRef } from 'react';
-import { Alert, Keyboard, StyleSheet, Text, TextInput, TouchableOpacity, TouchableWithoutFeedback, View } from 'react-native';
+import {
+    Alert,
+    Keyboard,
+    StyleSheet,
+    Text,
+    TextInput, 
+    TouchableOpacity, 
+    TouchableWithoutFeedback, 
+    View
+} from 'react-native';
+import { useAuth } from '../contexts/AuthContext';
 
-import api from '../axiosConfig';
-import { setToken } from '../helpers/token';
+import Button from '../components/Button';
 
-const Login = ({ navigation: { navigate, replace } }) => {
+const Login = ({ navigation }) => {
     const emailInput = useRef(null);
     const passwordInput = useRef(null);
+
+    const { login } = useAuth();
 
     const handleLogin = async () => {
         const username = emailInput.current.value;
@@ -17,27 +28,19 @@ const Login = ({ navigation: { navigate, replace } }) => {
             return;
         }
 
-        const data = new URLSearchParams();
-        data.append("username", username);
-        data.append("password", password);
-
         try {
-            const response = await api.post("/users/login", data, {
-                headers: {
-                    "Content-Type": "application/x-www-form-urlencoded"
-                }
-            });
-            const { access_token: accessToken } = response.data;
-            await setToken(accessToken);
-            replace("AuthLoading");
+            await login(username, password);
         }
-        catch (error) {
-            if (error.response.status === 401) {
+        catch (err) {
+            console.error("Error while trying to login:", err);
+            if (err.response.status === 401) {
                 Alert.alert("Usuário ou senha incorretos!");
-            } else {
-                console.error(error);
             }
-        }            
+        }
+    };
+
+    const handleRegister = () => {
+        navigation.navigate("Register");
     };
 
     return (
@@ -77,16 +80,9 @@ const Login = ({ navigation: { navigate, replace } }) => {
                     </View>
                 </View>
                 <View style={styles.action}>
-                    <TouchableOpacity 
-                        onPress={handleLogin}
-                        style={styles.button}
-                    >
-                        <Text style={styles.buttonText}>
-                            Fazer login
-                        </Text>
-                    </TouchableOpacity>
+                    <Button title="Fazer login" onPress={handleLogin} />
                     <TouchableOpacity>
-                        <Text style={{ fontSize: 16, fontWeight: 'bold' }} onPress={() => navigate("Register")}>
+                        <Text style={{ fontSize: 16, fontWeight: 'bold' }} onPress={handleRegister}>
                             Ainda não possui uma conta?{" "}
                             <Text style={{ color: '#FF6624' }}>
                                 Cadastre-se agora!

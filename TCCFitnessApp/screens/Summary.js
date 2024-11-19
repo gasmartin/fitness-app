@@ -1,73 +1,19 @@
-import React, { useEffect, useState } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, ActivityIndicator } from 'react-native';
+import React from 'react';
+import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import { CommonActions } from '@react-navigation/native';
-import api from '../axiosConfig';
-import { getToken } from '../helpers/token';
 
 const Summary = ({ navigation, route }) => {
-    const {
-        gender,
-        age,
-        height,
-        weight,
-        activityLevel,
-        goalType
-    } = route.params.userInfo;
-
-    const [goalCalories, setGoalCalories] = useState(0);
-    const [isLoading, setIsLoading] = useState(true);
-
-    useEffect(() => {
-        const calculateCalories = async () => {            
-            setIsLoading(true);
-
-            const token = await getToken();
-
-            try {
-                const response = await api.get(`/get-goal-calories-preview?gender=${gender}&age=${age}&height=${height}&weight=${weight}&activity_level=${activityLevel}&goal_type=${goalType}`);
-                setGoalCalories(response.data.goal_calories);
-            }
-            catch (error) {
-                console.error(error);
-            }
-
-            setIsLoading(false);
-        };
-
-        calculateCalories();
-    }, []);
+    const goalCalories = route.params.goalCalories;
+    const goalType = route.params.goalType;
 
     const handleLetsGo = async () => {
-        setIsLoading(true);
-
-        const body = {
-            gender,
-            age,
-            height,
-            weight,
-            activity_level: activityLevel,
-            goal_type: goalType
-        };
-
-        try {
-            await api.put("/users/", body);
-            navigation.dispatch(
-                CommonActions.reset({
-                    index: 0,
-                    routes: [{ name: "AuthLoading" }],
-                })
-            );
-        }
-        catch (error) {
-            console.error(error);
-        }
-
-        setIsLoading(false);
+        navigation.dispatch(
+            CommonActions.reset({
+                index: 0,
+                routes: [{ name: "Home" }],
+            })
+        );
     };
-
-    const handleBack = () => {
-        navigation.navigate("InitialForm");
-    }
 
     const getGoalText = () => {
         if (goalType === "lose_weight") {
@@ -82,12 +28,6 @@ const Summary = ({ navigation, route }) => {
     };
 
     const goalText = getGoalText();
-
-    if (isLoading) {
-        return (
-            <ActivityIndicator size="large" color="#0000ff" />
-        );
-    }
 
     return (
         <View style={styles.container}>
@@ -109,11 +49,6 @@ const Summary = ({ navigation, route }) => {
                 <TouchableOpacity style={styles.primaryButton} onPress={handleLetsGo}>
                     <Text style={styles.primaryButtonText}>
                         Vamos lá
-                    </Text>
-                </TouchableOpacity>
-                <TouchableOpacity style={styles.secondaryButton} onPress={handleBack}>
-                    <Text style={styles.secondaryButtonText}>
-                        Voltar
                     </Text>
                 </TouchableOpacity>
             </View>

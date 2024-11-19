@@ -1,6 +1,6 @@
 import axios from 'axios';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { CommonActions, useNavigation } from '@react-navigation/native';
+import { reset } from './NavigationService';
 
 const api = axios.create({
   baseURL: 'http://192.168.25.42:8000',
@@ -63,13 +63,7 @@ api.interceptors.response.use(
           await AsyncStorage.removeItem('accessToken');
           await AsyncStorage.removeItem('refreshToken');
 
-          const navigation = useNavigation();
-          navigation.dispatch(
-            CommonActions.reset({
-              index: 0,
-              routes: [{ name: "Login" }],
-            })
-          );
+          reset();
 
           return Promise.reject(err);
         }

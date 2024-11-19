@@ -1,104 +1,253 @@
-import React, { useContext, useEffect, useState } from 'react';
-import { ActivityIndicator, ScrollView, View, Text, TextInput, StyleSheet, TouchableOpacity } from 'react-native';
+import React, { useCallback, useContext, useEffect, useState } from 'react';
+import { View, Text, ScrollView, StyleSheet, TouchableOpacity } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import { FAB } from 'react-native-paper';
 import { format, addDays } from 'date-fns';
 
-import axios from 'axios';
 import api from '../axiosConfig';
 import { CurrentDateContext } from '../contexts/CurrentDateContext';
-import Dashboard from '../components/Dashboard';
-import ServingList from '../components/ServingList';
+import { useAuth } from '../contexts/AuthContext';
+import DateSwitcher from '../components/DateSwitcher';
+import ActivityDashboard from '../components/ActivityDashboard';
+import AddActivityModal from '../components/AddActivityModal';
+import WaterIntakeForm from '../components/WaterIntakeForm';
+import ExerciseLogForm from '../components/ExerciseLogForm';
 
 
-const DailyServings = ({ navigation }) => {
+const DailyServings = ({ navigation, route }) => {
   const { currentDate, setCurrentDate } = useContext(CurrentDateContext);
+  const [shouldUpdate, setShouldUpdate] = useState(false);
+  const { user } = useAuth();
+
+  const [meals, setMeals] = useState([]);
+
+  const [totalCaloriesIntake, setTotalCaloriesIntake] = useState(0); 
+  const [totalWaterIntake, setTotalWaterIntake] = useState(0);
+  const [totalCaloriesBurned, setTotalCaloriesBurned] = useState(0);
+  const [foodConsumptions, setFoodConsumptions] = useState([]);
+  const [waterIntakes, setWaterIntakes] = useState([]);
+  const [exerciseLogs, setExerciseLogs] = useState([]);
+
+  const goalCalories = 0;
 
   const [servingsByDate, setServingsByDate] = useState({});
   const [dashboardInfo, setDashboardInfo] = useState({});
   const [isLoading, setIsLoading] = useState(false);
 
+  const [isWaterIntakeModalVisible, setIsWaterIntakeModalVisible] = useState(false);
+  const [selectedWaterIntake, setSelectedWaterIntake] = useState(null);
+
+  const [isExerciseLogModalVisible, setIsExerciseLogModalVisible] = useState(false);
+  const [selectedExerciseLog, setSelectedExerciseLog] = useState(null);
+
   const formattedDate = format(currentDate, 'yyyy-MM-dd');
+  const netCalories = totalCaloriesIntake - totalCaloriesBurned;
+
+  const foodConsumptionsByMeal = meals.map((meal) => (
+    [meal, foodConsumptions.filter((fc) => fc.meal.id === meal.id)]
+  ));
+
+  const handleOpenWaterIntakeModal = (waterIntake = null) => {
+    setSelectedWaterIntake(waterIntake);
+    setIsWaterIntakeModalVisible(true);
+  };
+
+  const handleCloseWaterIntakeModal = () => {
+    setIsWaterIntakeModalVisible(false);
+    setSelectedWaterIntake(null);
+  };
+
+  const handleSaveWaterIntake = async (quantity) => {
+    const data = {
+      quantityInLiters: quantity / 100,
+      intakeDate: formattedDate
+    };
+
+    const headers = {
+      'Content-Type': 'application/json'
+    };
+
+    try {
+      if (selectedWaterIntake) {
+        await api.put(`/water-intakes/${selectedWaterIntake.id}`, data, { headers });
+      }
+      else {
+        await api.post('/water-intakes/', data, { headers })
+      }
+    }
+    catch (err) {
+      console.error(`Error while trying to ${selectedWaterIntake ? 'update' : 'create'} water intake:`, err);
+    }
+
+    handleCloseWaterIntakeModal();
+    getDailyOverview();
+  };
+
+  const handleOpenExerciseLogModal = (exerciseLog = null) => {
+    setSelectedExerciseLog(exerciseLog);
+    setIsExerciseLogModalVisible(true);
+  };
+
+  const handleCloseExerciseLogModal = () => {
+    setIsExerciseLogModalVisible(false);
+    setSelectedExerciseLog(null);
+  };
+
+  const handleSaveExerciseLogModal = async (exerciseId, durationInMinutes) => {
+    const data = {
+      exerciseId, 
+      durationInHours: parseFloat(durationInMinutes) / 60,
+      practiceDate: formattedDate
+    };
+
+    console.log(data);
+
+    const headers = {
+      'Content-Type': 'application/json'
+    };
+
+    try {
+      if (selectedExerciseLog) {
+        await api.put(`/exercise-logs/${selectedExerciseLog.id}`, data, { headers });
+      }
+      else {
+        await api.post('/exercise-logs/', data, { headers });
+      }
+    }
+    catch (err) {
+      console.error(`Error while trying to ${selectedExerciseLog ? 'update' : 'create'} exercise log:`, err);
+    }
+
+    handleCloseExerciseLogModal();
+    getDailyOverview();
+  };
+
+  const getMeals = async () => {
+    try {
+      const response = await api.get('/users/me/meals', { headers: { 'Content-Type': 'application/json' } })
+      setMeals(response.data);
+    }
+    catch (err) {
+      console.error('Error while trying to get meals:', err);
+    }
+  };
+
+  const getDailyOverview = async () => {
+    try {
+      const response = await api.get(`/users/me/daily-overview?date=${formattedDate}`);
+
+       setTotalCaloriesIntake(response.data.totalCaloriesIntake);
+       setTotalWaterIntake(response.data.totalWaterIntake);
+       setTotalCaloriesBurned(response.data.totalCaloriesBurned);
+       setFoodConsumptions(response.data.foodConsumptions);
+       setExerciseLogs(response.data.exerciseLogs);
+       setWaterIntakes(response.data.waterIntakes);
+    }
+    catch (err) {
+      console.error('Error while trying to get daily overview:', err);
+    }
+  };
+
+  useEffect(() => {
+    getMeals();
+    getDailyOverview();
+  }, []);
+
+  useEffect(() => {
+    getDailyOverview();
+  }, [currentDate]);
+
+  useEffect(() => {
+    if (selectedWaterIntake) {
+      setIsWaterIntakeModalVisible(true);
+    } else if (!isWaterIntakeModalVisible) {
+      setSelectedWaterIntake(null);
+    }
+  }, [selectedWaterIntake, isWaterIntakeModalVisible]);
+
+  useFocusEffect(
+    useCallback(() => {
+      if (route.params?.shouldRefresh) {
+        getDailyOverview();
+        route.params.shouldRefresh = false;
+      }
+    }, [route.params?.shouldRefresh])
+  );
 
   const changeDate = (days) => {
     setCurrentDate(addDays(currentDate, days));
   };
 
-  const fetchDashboardInfo = async () => {
-    try {
-      const response = await api.get(`/dashboard-info?day=${formattedDate}`);
-      const { consumed_calories: consumedCalories, goal_calories: goalCalories } = response.data;
-      setDashboardInfo({ consumedCalories, goalCalories });
-    }
-    catch (error) {
-      console.error(error);
-    }
-  };
-
-  const fetchServings = async (useLoading = true) => {
-    useLoading && setIsLoading(true);
-    try {
-      // Fetch servings data from an API
-      const response = await api.get(`/user-foods/?day=${formattedDate}`);
-      setServingsByDate({
-        ...servingsByDate,
-        [formattedDate]: response.data,
-      });
-    } catch (error) {
-      if (axios.isAxiosError(error)) {
-        if (error.response.status === 404) {
-          setServingsByDate({
-            ...servingsByDate,
-            [formattedDate]: [],
-          });
-        }
-        else if (error.response.status === 401) {
-          navigation.navigate("AuthLoading");
-        }
-      }
-      else {
-        console.error(error);
-      }
-    }
-    useLoading && setIsLoading(false);
-  }
-
-  useEffect(() => {
-    fetchDashboardInfo();
-    if (!servingsByDate[formattedDate]) {
-      fetchServings();
-    }
-  }, [currentDate]);
-
-  useFocusEffect(
-    React.useCallback(() => {
-      fetchDashboardInfo();
-      // FIXME: Everytime the currentDate is changed, the fetchServings is called
-      fetchServings();  
-    }, [currentDate])
-  );
-
   return (
-    <View style={styles.container}>
-      <View style={styles.dateContainer}>
-        <TouchableOpacity style={styles.changeDateArrowButton} onPress={() => changeDate(-1)}>
-          <Text style={styles.changeDateArrowButtonText}>
-            ←
-          </Text>
-        </TouchableOpacity>
-        <TextInput style={styles.dateInput} value={format(currentDate, 'dd/MM')} editable={false} />
-        <TouchableOpacity style={styles.changeDateArrowButton} onPress={() => changeDate(1)}>
-          <Text style={styles.changeDateArrowButtonText}>
-            →
-          </Text>
+    <ScrollView style={styles.container}>
+      <DateSwitcher date={formattedDate} onChangeDate={changeDate} />
+      <ActivityDashboard goalCalories={goalCalories} netCalories={netCalories} />
+      {foodConsumptionsByMeal.map(([meal, fc_list], index) => (
+        <View key={index}>
+          <Text>{meal.name}</Text>
+          {fc_list.map((fc) => (
+            <TouchableOpacity key={fc.id} onPress={() => navigation.navigate("EditFoodEntry", { selectedMeal: meal, meals, foodConsumption: fc })}>
+              <View>
+                <Text>{fc.food.name}</Text>
+                <Text>{fc.quantity} x {fc.servingSize.name}</Text>
+              </View>
+              <View>
+                <Text>{fc.calories} kcal</Text>
+              </View>
+            </TouchableOpacity>
+          ))}
+          <TouchableOpacity onPress={() => navigation.navigate("FoodSearchResults", { currentDate: formattedDate, selectedMeal: meal, meals })}>
+            <Text>Adicionar comida</Text>
+          </TouchableOpacity>
+        </View>
+      ))}
+      <View>
+        <Text>Ingestão de Água</Text>
+        {waterIntakes.map((wi) => (
+          <TouchableOpacity key={wi.id} onPress={() => handleOpenWaterIntakeModal(wi)}>
+            <Text>
+              {wi.quantityInLiters * 100} ml
+            </Text>
+          </TouchableOpacity>
+        ))}
+        <TouchableOpacity onPress={() => handleOpenWaterIntakeModal()}>
+          <Text>Adicionar Ingestão de Água</Text>
         </TouchableOpacity>
       </View>
-      <Dashboard dashboardInfo={dashboardInfo} />
-      {isLoading ? (
-        <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
-          <ActivityIndicator size="large" color="#FF6624" />
-        </View>
-      ) : <ServingList servings={servingsByDate[formattedDate]} refreshServings={fetchServings} />}
+      <View>
+        <Text>Exercícios e Atividades Físicas</Text>
+        {exerciseLogs.map((el) => (
+          <TouchableOpacity key={el.id} onPress={() => handleOpenExerciseLogModal(el)}>
+            <Text>{el.exercise.name}</Text>
+            <Text>{el.durationInHours * 60} min</Text>
+          </TouchableOpacity>
+        ))}
+        <TouchableOpacity onPress={() => handleOpenExerciseLogModal()}>
+          <Text>Adicionar Exercício</Text>
+        </TouchableOpacity>
+      </View>
+      <AddActivityModal
+        title="Ingestão de Água"
+        visible={isWaterIntakeModalVisible} 
+        toggleModal={handleCloseWaterIntakeModal}
+      >
+        <WaterIntakeForm
+          initialQuantity={selectedWaterIntake?.quantityInLiters * 100 || ''}
+          onSubmit={handleSaveWaterIntake}
+        />
+      </AddActivityModal>
+      <AddActivityModal
+        title="Log de Exercício"
+        visible={isExerciseLogModalVisible}
+        toggleModal={handleCloseExerciseLogModal}
+      >
+        <ExerciseLogForm 
+          initialSelectedExerciseId={selectedExerciseLog?.exerciseId || ''}
+          initialDuration={selectedExerciseLog?.durationInHours * 60 || ''}
+          onSubmit={handleSaveExerciseLogModal} 
+        />
+      </AddActivityModal>
+      {/*
       <FAB
         style={styles.fab}
         icon="plus"
@@ -106,7 +255,13 @@ const DailyServings = ({ navigation }) => {
         size="medium"
         onPress={() => navigation.navigate("FoodSearchResults")}
       />
-    </View>
+      <WaterIntakeModal 
+        currentDate={formattedDate}
+        visible={isWaterIntakeModalVisible} 
+        toggleModal={() => setIsWaterIntakeModalVisible(!isWaterIntakeModalVisible)} 
+      />
+      */}
+    </ScrollView>
   );
 };
 

@@ -1,71 +1,104 @@
-import React, { useContext, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { View, Text, TextInput, Keyboard, TouchableWithoutFeedback, StyleSheet, TouchableOpacity } from 'react-native';
 import DropDownPicker from 'react-native-dropdown-picker';
-import { format } from 'date-fns';
+import { CommonActions } from '@react-navigation/native';
 
 import api from '../axiosConfig';
-import { mealTypeItems } from '../utils/mealTypes';
-import { CurrentDateContext } from '../contexts/CurrentDateContext';
-import axios from 'axios';
 import FoodEntryDetails from '../components/FoodEntryDetails';
+import Loader from '../components/Loader';
 
-const AddFoodEntry = ({ navigation: { goBack, navigate }, route: { params: { food } } }) => {
-    const { name, kcal, carbohydrates, protein, lipids } = food;
+const AddFoodEntry = ({ navigation, route }) => {
+    const { currentDate, food_id, selectedMeal, meals } = route.params;
 
-    const { currentDate } = useContext(CurrentDateContext);
+    const [food, setFood] = useState(null);
+    const [isLoading, setIsLoading] = useState(true);
 
-    const [mealType, setMealType] = useState(mealTypeItems[0].value);
+    const [meal, setMeal] = useState(selectedMeal);
+    const [isMealDropdownOpen, setIsMealDropdownOpen] = useState(false);
+
+    const [servingSize, setServingSize] = useState(food?.servingSizes[0] || null);
+    const [isServingSizeDropdownOpen, setIsServingSizeDropdownOpen] = useState(false);
+
     const [quantity, setQuantity] = useState("0");
 
-    const [isMealTypeDropdownOpen, setIsMealTypeDropdownOpen] = useState(false);
+    useEffect(() => {
+        (async () => {
+            try {
+                const response = await api.get(`/foods/${food_id}`, { headers: { 'Content-Type': 'application/json' } });
+                console.log(response.data);
+                setFood(response.data);
+                setServingSize(response.data.servingSizes[0]);
+                setIsLoading(false);
+            }
+            catch (err) {
+                console.error('Error while trying to get food:', err);
+            }
+        })();
+    }, []);
+
+    const convertToNumber = (input) => {
+        return parseFloat(parseFloat(input.replace(',', '.')).toFixed(1));
+    }
 
     const handleAdd = async () => {
-        const parsedQuantity = parseInt(quantity.replace(",", "."));
-
-        const body = {
-            meal_type: mealType,
-            quantity_in_grams: parsedQuantity,
-            consumed_at: format(currentDate, "yyyy-MM-dd"),
-            food,
+        const data = {
+            quantity: convertToNumber(quantity),
+            consumptionDate: currentDate,
+            foodId: food.id,
+            mealId: meal.id,
+            servingSizeId: servingSize.id
         };
 
+        console.log(data);
+
         try {
-            await api.post("/user-foods/", body);
-            navigate("Home");
+            await api.post('/food-consumptions/', data, { headers: { 'Content-Type': 'application/json' } })
+            navigation.dispatch(
+                CommonActions.reset({
+                    index: 0,
+                    routes: [{ name: 'Home', params: { shouldRefresh: true } }]
+                })
+            );
         }
-        catch (error) {
-            if (axios.isAxiosError(error)) {
-                if (error.response.status === 401) {
-                    navigate("AuthLoading");
-                }
-                else {
-                    console.error(error.response.data);
-                }
-            }
-            else {
-                console.error(error);
-            }
+        catch (err) {
+            console.error('Error while trying to create food consumption:', err);
         }
     };
 
-    const handleBack = () => {
-        goBack();
+    if (isLoading) {
+        return <Loader />
     }
 
     return (
         <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
             <View style={styles.container}>
                 <View style={styles.header}>
-                    <Text style={styles.headerTitle}>{name}</Text>
+                    <Text style={styles.headerTitle}>{food.name}</Text>
                 </View>
                 <View style={styles.body}>
-                    <Text style={styles.formLabel}>Tipo de refeição:</Text>
+                    <Text style={styles.formLabel}>Refeição:</Text>
                     <DropDownPicker
-                        open={isMealTypeDropdownOpen}
-                        setOpen={setIsMealTypeDropdownOpen}
-                        items={mealTypeItems}
-                        value={mealType}
-                        setValue={setMealType}
+                        open={isMealDropdownOpen}
+                        setOpen={setIsMealDropdownOpen}
+                        items={meals.map((meal) => ({label: meal.name, value: meal}))}
+                        value={meal}
+                        setValue={setMeal}
+                        containerStyle={{ height: 40, marginBottom: 20 }}
+                        style={styles.picker}
+                        itemStyle={{
+                            justifyContent: 'flex-start'
+                        }}
+                        dropDownStyle={{ backgroundColor: '#fafafa' }}
+                        zIndex={4000}
+                        zIndexInverse={1000}
+                    />
+                    <Text style={styles.formLabel}>Porção:</Text>
+                    <DropDownPicker
+                        open={isServingSizeDropdownOpen}
+                        setOpen={setIsServingSizeDropdownOpen}
+                        items={food.servingSizes.map((ss) => ({label: ss.name, value: ss}))}
+                        value={servingSize}
+                        setValue={setServingSize}
                         containerStyle={{ height: 40, marginBottom: 20 }}
                         style={styles.picker}
                         itemStyle={{
@@ -75,14 +108,14 @@ const AddFoodEntry = ({ navigation: { goBack, navigate }, route: { params: { foo
                         zIndex={3000}
                         zIndexInverse={1000}
                     />
-                    <Text style={styles.formLabel}>Quantidade em gramas consumida:</Text>
+                    <Text style={styles.formLabel}>Quantidade da porção:</Text>
                     <TextInput
                         value={quantity}
                         onChangeText={setQuantity}
                         keyboardType="numeric"
                         style={styles.input}
                     />
-                    <FoodEntryDetails quantity={quantity} food={food} />
+                    <FoodEntryDetails quantity={quantity} servingSize={servingSize} />
                 </View>
                 <View style={styles.buttonsContainer}>
                     <TouchableOpacity style={styles.primaryButton} onPress={handleAdd}>
@@ -90,7 +123,7 @@ const AddFoodEntry = ({ navigation: { goBack, navigate }, route: { params: { foo
                             Adicionar
                         </Text>
                     </TouchableOpacity>
-                    <TouchableOpacity style={styles.secondaryButton} onPress={handleBack}>
+                    <TouchableOpacity style={styles.secondaryButton} onPress={() => navigation.goBack()}>
                         <Text style={styles.secondaryButtonText}>
                             Voltar
                         </Text>

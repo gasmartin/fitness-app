@@ -5,24 +5,34 @@ import DropDownPicker from 'react-native-dropdown-picker';
 import FoodEntryDetails from '../components/FoodEntryDetails';
 
 import api from '../axiosConfig';
-import { mealTypeItems } from '../utils/mealTypes';
+import { CommonActions } from '@react-navigation/native';
 
 const EditFoodEntry = ({ navigation, route }) => {
-    const { userFood } = route.params;
+    const { selectedMeal, meals, foodConsumption } = route.params;
 
-    const [mealType, setMealType] = useState(userFood.meal_type);
-    const [quantityInGrams, setQuantityInGrams] = useState(userFood.quantity_in_grams.toString());
-    const [isMealTypeDropdownOpen, setIsMealTypeDropdownOpen] = useState(false);
+    const [meal, setMeal] = useState(selectedMeal);
+    const [isMealDropdownOpen, setIsMealDropdownOpen] = useState(false);
+
+    const [servingSize, setServingSize] = useState(foodConsumption.servingSize);
+    const [isServingSizeDropdownOpen, setIsServingSizeDropdownOpen] = useState(false);
+
+    const [quantity, setQuantity] = useState(foodConsumption.quantity.toString());
 
     const handleSave = async () => {
-        const body = {
-            meal_type: mealType,
-            quantity_in_grams: parseInt(quantityInGrams)
+        const data = {
+            quantity,
+            mealId: meal.id,
+            servingSizeId: servingSize.id
         }
 
         try {
-            await api.put(`/user-foods/${userFood.id}`, body);
-            navigation.goBack();
+            await api.put(`/food-consumptions/${foodConsumption.id}`, data, { headers: { 'Content-Type': 'application/json' } });
+            navigation.dispatch(
+                CommonActions.reset({
+                    index: 0,
+                    routes: [{ name: 'Home', params: { shouldRefresh: true } }]
+                })
+            );
         }
         catch (error) {
             console.log(error);
@@ -31,8 +41,8 @@ const EditFoodEntry = ({ navigation, route }) => {
 
     const handleDelete = async () => {
         try {
-            await api.delete(`/user-foods/${userFood.id}`);
-            navigation.navigate("Home");
+            await api.delete(`/food-consumptions/${foodConsumption.id}`);
+            navigation.goBack();
         }
         catch (error) {
             console.log(error);
@@ -43,22 +53,44 @@ const EditFoodEntry = ({ navigation, route }) => {
         navigation.goBack()
     };
 
+    const servingSizeDropdownItems = [
+        servingSize, ...foodConsumption.food.servingSizes.filter((ss) => ss.id != servingSize.id)
+    ].map((ss) => ({label: ss.name, value: ss}));
+
+    console.log(servingSizeDropdownItems);
+
     return (
         <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
             <View style={styles.container}>
                 <View style={styles.header}>
                     <Text style={styles.headerTitle}>
-                        {userFood.food.name}
+                        {foodConsumption.food.name}
                     </Text>
                 </View>
                 <View style={styles.body}>
-                    <Text style={styles.formLabel}>Tipo de refeição:</Text>
+                    <Text style={styles.formLabel}>Refeição:</Text>
                     <DropDownPicker
-                        open={isMealTypeDropdownOpen}
-                        setOpen={setIsMealTypeDropdownOpen}
-                        items={mealTypeItems}
-                        value={mealType}
-                        setValue={setMealType}
+                        open={isMealDropdownOpen}
+                        setOpen={setIsMealDropdownOpen}
+                        value={meal}
+                        items={meals.map((meal) => ({label: meal.name, value: meal}))}
+                        setValue={setMeal}
+                        containerStyle={{ height: 40, marginBottom: 20 }}
+                        style={styles.picker}
+                        itemStyle={{
+                            justifyContent: 'flex-start'
+                        }}
+                        dropDownStyle={{ backgroundColor: '#fafafa' }}
+                        zIndex={4000}
+                        zIndexInverse={1000}
+                    />
+                    <Text style={styles.formLabel}>Porção:</Text>
+                    <DropDownPicker
+                        open={isServingSizeDropdownOpen}
+                        setOpen={setIsServingSizeDropdownOpen}
+                        value={servingSize}
+                        items={servingSizeDropdownItems}
+                        setValue={setServingSize}
                         containerStyle={{ height: 40, marginBottom: 20 }}
                         style={styles.picker}
                         itemStyle={{
@@ -68,14 +100,14 @@ const EditFoodEntry = ({ navigation, route }) => {
                         zIndex={3000}
                         zIndexInverse={1000}
                     />
-                    <Text style={styles.formLabel}>Quantidade em gramas consumida:</Text>
+                    <Text style={styles.formLabel}>Quantidade:</Text>
                     <TextInput
-                        value={quantityInGrams}
-                        onChangeText={setQuantityInGrams}
+                        value={quantity}
+                        onChangeText={setQuantity}
                         keyboardType="numeric"
                         style={styles.input}
                     />
-                    <FoodEntryDetails quantity={quantityInGrams} food={userFood.food} />
+                    <FoodEntryDetails quantity={quantity} servingSize={servingSize} />
                 </View>
                 <View style={styles.buttonsContainer}>
                     <TouchableOpacity style={styles.buttonSave} onPress={handleSave}>

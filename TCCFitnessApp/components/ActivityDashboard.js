@@ -1,11 +1,10 @@
 import React from 'react';
 import { Text, View, StyleSheet } from 'react-native';
-import { AnimatedCircularProgress } from 'react-native-circular-progress';
 
 import Card from './Card';
 
 
-const Dashboard = ({ dashboardInfo }) => {
+const ActivityDashboard = (props) => {
     return (
         <Card>
             <View style={{ justifyContent: 'center', alignItems: 'center' }}>
@@ -13,13 +12,13 @@ const Dashboard = ({ dashboardInfo }) => {
                     <Text style={{ fontWeight: 'bold' }}>
                         Calorias consumidas no dia:{" "}
                     </Text>
-                    {dashboardInfo.consumedCalories || 0} kcal
+                    {props.netCalories || 0} kcal
                 </Text>
                 <Text style={{ fontSize: 18 }}>
                     <Text style={{ fontWeight: 'bold' }}>
                         Meta de calorias do dia:{" "}
                     </Text>
-                    {dashboardInfo.goalCalories || 0} kcal
+                    {props.goalCalories || 0} kcal
                 </Text>
                 {/* <AnimatedCircularProgress
                     size={120}
@@ -50,4 +49,4 @@ const styles = StyleSheet.create({
     },
 });
 
-export default Dashboard;
+export default ActivityDashboard;

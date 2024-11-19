@@ -2,11 +2,11 @@ import React from 'react';
 import { Text, View, StyleSheet } from 'react-native';
 import Card from './Card';
 
-const FoodEntryDetails = ({ food, quantity }) => {
-    const calories = parseInt(food.kcal * (quantity / 100));
-    const carbohydrates = parseInt(food.carbohydrates * (quantity / 100));
-    const protein = parseInt(food.protein * (quantity / 100));
-    const lipids = parseInt(food.lipids * (quantity / 100));
+const FoodEntryDetails = ({ quantity, servingSize }) => {
+    const calories = parseInt(servingSize.calories * quantity);
+    const carbohydrates = parseInt(servingSize.carbohydrates * quantity);
+    const proteins = parseInt(servingSize.proteins * quantity);
+    const lipids = parseInt(servingSize.lipids * quantity);
 
     return (
         <View style={styles.container}>
@@ -27,7 +27,7 @@ const FoodEntryDetails = ({ food, quantity }) => {
                     <Text style={styles.labelText}>
                         Proteínas: {" "}
                     </Text>
-                    {protein} g
+                    {proteins} g
                 </Text>
                 <Text style={styles.labelTextContainer}>
                     <Text style={styles.labelText}>

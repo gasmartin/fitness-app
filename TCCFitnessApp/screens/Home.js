@@ -1,14 +1,43 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { Text } from 'react-native';
+import { CommonActions } from '@react-navigation/native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import Icon from 'react-native-vector-icons/MaterialIcons';
 
 import DailyServings from './DailyServings';
 import Profile from './Profile';
 
+import api from '../axiosConfig';
+import { useAuth } from '../contexts/AuthContext';
+
 const Tab = createBottomTabNavigator();
 
-const Home = () => {
+const Home = ({ navigation }) => {
+    const { updateUser } = useAuth();
+
+    useEffect(() => {
+        (async () => {
+            try {
+                const response = await api.get(`/users/me`);
+                await updateUser(response.data);
+
+                const { hasPhysiologyInformation } = response.data;
+
+                if (!hasPhysiologyInformation) {
+                    navigation.dispatch(
+                        CommonActions.reset({
+                            index: 0,
+                            routes: [{ name: 'InitialForm' }]
+                        })
+                    );
+                }
+            }
+            catch (err) {
+                console.log(err);
+            }
+        })();
+    }, []);
+
     return (
         <Tab.Navigator
             screenOptions={({ route }) => ({

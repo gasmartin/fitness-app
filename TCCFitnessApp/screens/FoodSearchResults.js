@@ -2,9 +2,10 @@ import React, { useState, useEffect } from 'react';
 import { View, TextInput, FlatList, Text, ActivityIndicator, StyleSheet, Pressable } from 'react-native';
 
 import api from '../axiosConfig';
-import { getToken } from '../helpers/token';
 
-const FoodSearchResults = ({ navigation: { navigate } }) => {
+const FoodSearchResults = ({ navigation, route }) => {
+    const { currentDate, selectedMeal, meals } = route.params;
+
     const [searchQuery, setSearchQuery] = useState("");
     const [results, setResults] = useState([]);
     const [isLoading, setIsLoading] = useState(false);
@@ -12,7 +13,7 @@ const FoodSearchResults = ({ navigation: { navigate } }) => {
     const fetchFoodResults = async (query) => {
         setIsLoading(true);
         try {
-            const response = await api.get(`/foods/?search_term=${query}`);
+            const response = await api.get(`/foods/?q=${query}`);
             setResults(response.data);
         } catch (error) {
             console.error(error);
@@ -46,7 +47,7 @@ const FoodSearchResults = ({ navigation: { navigate } }) => {
                     data={results}
                     keyExtractor={(food) => food.id.toString()}
                     renderItem={({ item }) => (
-                        <Pressable onPress={() => navigate("AddFoodEntry", { food: item })}>
+                        <Pressable onPress={() => navigation.navigate("AddFoodEntry", { currentDate, selectedMeal, meals, food_id: item.id })}>
                             <View style={styles.item}>
                                 <Text>{item.name}</Text>
                             </View>

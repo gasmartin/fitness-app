@@ -64,6 +64,10 @@ class UserUpdate(UserPhysiology):
 
 class UserRead(UserBase):
     id: int
+    bmr: Optional[int] = None
+    tdee: Optional[int] = None
+    goal_calories: Optional[int] = None
+    has_physiology_information: Optional[bool] = None
 
     class Config:
         from_attributes = True
@@ -172,6 +176,7 @@ class ExerciseLogUpdate(CamelCaseModel):
 
 class ExerciseLogRead(ExerciseLogCreate):
     id: int
+    exercise: ExerciseRead
 
     class Config:
         from_attributes = True
@@ -195,6 +200,10 @@ class FoodConsumptionUpdate(CamelCaseModel):
 
 class FoodConsumptionRead(FoodConsumptionCreate):
     id: int
+    calories: int
+    carbohydrates: int
+    proteins: int
+    lipids: int
     food: FoodRead
     meal: MealRead
     serving_size: ServingSizeRead
