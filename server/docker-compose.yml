@@ -3,6 +3,8 @@ services:
     build: .
     volumes:
       - .:/app
+    env_file:
+      - .env
     ports:
       - "8000:8000"
     command: ["fastapi", "dev", "app/main.py", "--host", "0.0.0.0"]

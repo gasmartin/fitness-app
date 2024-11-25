@@ -51,5 +51,4 @@ async def root():
 @app.on_event("startup")
 async def startup_event():
     if os.getenv("NUTRITRACK_POPULATE_DATABASE", "").lower() in ("true", "1"):
-        print(1)
         populate_database()

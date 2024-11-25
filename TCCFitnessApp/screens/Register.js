@@ -38,7 +38,7 @@ const Register = ({ navigation }) => {
             });
             const { access_token: accessToken } = response.data;
             await setToken(accessToken);
-            navigation.replace("AuthLoading");
+            navigation.replace("Home");
         }
         catch (error) {
             console.error(error);

@@ -147,14 +147,14 @@ class WaterIntake(TimestampMixin, Base):
     __tablename__ = "water_intakes"
 
     id: Mapped[int] = mapped_column(primary_key=True)
-    quantity_in_liters: Mapped[float] = mapped_column(nullable=False)
+    quantity_in_mililiters: Mapped[int] = mapped_column(nullable=False)
     intake_date = mapped_column(Date, nullable=False)
 
     user_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"))
     user: Mapped["User"] = relationship(back_populates="water_intakes")
 
     def __repr__(self) -> str:
-        return f"<WaterIntake id={self.id} quantity_in_liters={self.quantity_in_liters} intake_date={self.intake_date}>"
+        return f"<WaterIntake id={self.id} quantity_in_mililiters={self.quantity_in_mililiters} intake_date={self.intake_date}>"
 
 
 class Exercise(TimestampMixin, Base):
@@ -203,6 +203,10 @@ class ExerciseLog(TimestampMixin, Base):
 
     user: Mapped["User"] = relationship(back_populates="exercise_logs")
     exercise: Mapped["Exercise"] = relationship(back_populates="exercise_logs")
+
+    @property
+    def calories_burned(self) -> int:
+        return round(self.duration_in_hours * self.exercise.calories_per_hour)
 
     def __repr__(self) -> str:
         return f"<ExerciseLog id={self.id} duration_in_hours={self.duration_in_hours} practice_date={self.practice_date}>"

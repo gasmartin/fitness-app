@@ -7,6 +7,7 @@ import bcrypt
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from fastapi.security import OAuth2PasswordRequestForm
 from jose import jwt
+from openai import OpenAI
 from sqlalchemy.orm import Session
 
 from app.constants import (
@@ -14,11 +15,13 @@ from app.constants import (
     ALGORITHM,
     DEFAULT_MEALS,
     ENCODING,
+    OPENAI_SYSTEM_PROMPT,
     REFRESH_TOKEN_EXPIRE_DAYS,
-    SECRET_KEY
+    SECRET_KEY,
 )
 from app.dependencies.auth import get_current_user, verify_token
 from app.dependencies.database import get_db
+from app.enums import Goals
 from app.models import (
     User,
     Food,
@@ -47,6 +50,22 @@ from app.schemas import (
     UserUpdate,
     WaterIntakeRead,
 )
+
+EXAMPLE_CONTENT = """
+Objetivo: Perder peso
+Objetivo de calorias: 1500 kcal
+Data: 20/11/2024
+Total de calorias ingeridas: 735 kcal
+Total de ingestão de água: 2.1 L
+Total de calorias queimadas: 223 kcal
+
+Café da manhã: 1 fatia de pão integral com abacate, 1 xícara de café sem açúcar
+Almoço: 100g de frango grelhado, 200g de brócolis, 50g de arroz integral
+Jantar: Salada de folhas verdes com tomate e 50g de queijo cottage
+Lanches: 1 maçã, 1 punhado de amêndoas (30g)
+"""
+
+client = OpenAI()
 
 router = APIRouter(
     prefix="/users",
@@ -238,17 +257,17 @@ async def get_user_daily_overview(
     exercise_logs = await get_user_exercise_logs(date, current_user, db)
 
     total_calories_intake = reduce(
-        lambda total, fc: total + (fc.serving_size.calories * fc.quantity),
+        lambda total, fc: total + fc.calories,
         food_consumptions,
-        0.0,
+        0,
     )
     total_water_intake = reduce(
-        lambda total, wi: total + wi.quantity_in_liters, water_intakes, 0.0
+        lambda total, wi: total + wi.quantity_in_mililiters, water_intakes, 0.0
     )
     total_calories_burned = reduce(
-        lambda total, el: total + (el.duration_in_hours * el.exercise.calories_per_hour),
+        lambda total, el: total + el.calories_burned,
         exercise_logs,
-        0.0,
+        0,
     )
 
     return {
@@ -259,6 +278,46 @@ async def get_user_daily_overview(
         "water_intakes": water_intakes,
         "exercise_logs": exercise_logs,
     }
+
+
+@router.get("/me/daily-report", response_model=None)
+async def get_user_daily_report(
+    date: date = Query(description="Date to overview"),
+    current_user: UserRead = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    daily_overview = await get_user_daily_overview(date, current_user, db)
+
+    print(daily_overview)
+
+    if current_user.goal_type is Goals.LOSE_WEIGHT:
+        prompt = 'Objetivo: Perder peso\n'
+    elif current_user.goal_type is Goals.MAINTAIN_WEIGHT:
+        prompt = 'Objetivo: Manter peso\n'
+    else:
+        prompt = 'Objetivo: Ganhar peso\n'
+    
+    prompt += f'Objetivo de calorias: {current_user.goal_calories} kcal'
+    prompt += f'Data: {date.strftime(r"%d/%m/%Y")}\n'
+    prompt += f'Total de calorias ingeridas: {daily_overview["total_calories_intake"]} kcal'
+    prompt += f'Total de ingestão de água: {daily_overview["total_water_intake"]} L'
+    prompt += f'Total de calorias queimadas: {daily_overview["total_calories_burned"]} kcal'
+
+    # TODO: Colocar as refeições no prompt
+
+    response = client.chat.completions.create(
+        model="gpt-3.5-turbo",
+        messages=[
+            {"role": "system", "content": OPENAI_SYSTEM_PROMPT},
+            {"role": "user", "content": EXAMPLE_CONTENT},
+        ],
+        temperature=0.7,
+        max_tokens=512,
+    )
+
+    print(response.choices[0].message.content)
+
+    return {"generated_text": response.choices[0].message.content}
 
 
 @router.get("/me/has-provided-physiology-information", response_model=Dict[str, bool])

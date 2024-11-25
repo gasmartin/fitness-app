@@ -8,11 +8,15 @@ import api from '../axiosConfig';
 import { CurrentDateContext } from '../contexts/CurrentDateContext';
 import { useAuth } from '../contexts/AuthContext';
 import DateSwitcher from '../components/DateSwitcher';
-import ActivityDashboard from '../components/ActivityDashboard';
+import CombinedProgress from '../components/CombinedProgress';
 import AddActivityModal from '../components/AddActivityModal';
 import WaterIntakeForm from '../components/WaterIntakeForm';
 import ExerciseLogForm from '../components/ExerciseLogForm';
+import WaterIntakeLogView from '../components/WaterIntakeLogView';
 
+import FoodConsumptionList from '../components/FoodComsuptionList';
+import WaterIntakeList from '../components/WaterIntakeList';
+import ExerciseLogList from '../components/ExerciseLogList';
 
 const DailyServings = ({ navigation, route }) => {
   const { currentDate, setCurrentDate } = useContext(CurrentDateContext);
@@ -21,14 +25,12 @@ const DailyServings = ({ navigation, route }) => {
 
   const [meals, setMeals] = useState([]);
 
-  const [totalCaloriesIntake, setTotalCaloriesIntake] = useState(0); 
+  const [totalCaloriesIntake, setTotalCaloriesIntake] = useState(0);
   const [totalWaterIntake, setTotalWaterIntake] = useState(0);
   const [totalCaloriesBurned, setTotalCaloriesBurned] = useState(0);
   const [foodConsumptions, setFoodConsumptions] = useState([]);
   const [waterIntakes, setWaterIntakes] = useState([]);
   const [exerciseLogs, setExerciseLogs] = useState([]);
-
-  const goalCalories = 0;
 
   const [servingsByDate, setServingsByDate] = useState({});
   const [dashboardInfo, setDashboardInfo] = useState({});
@@ -41,12 +43,9 @@ const DailyServings = ({ navigation, route }) => {
   const [selectedExerciseLog, setSelectedExerciseLog] = useState(null);
 
   const formattedDate = format(currentDate, 'yyyy-MM-dd');
+
   const netCalories = totalCaloriesIntake - totalCaloriesBurned;
-
-  const foodConsumptionsByMeal = meals.map((meal) => (
-    [meal, foodConsumptions.filter((fc) => fc.meal.id === meal.id)]
-  ));
-
+  
   const handleOpenWaterIntakeModal = (waterIntake = null) => {
     setSelectedWaterIntake(waterIntake);
     setIsWaterIntakeModalVisible(true);
@@ -95,7 +94,7 @@ const DailyServings = ({ navigation, route }) => {
 
   const handleSaveExerciseLogModal = async (exerciseId, durationInMinutes) => {
     const data = {
-      exerciseId, 
+      exerciseId,
       durationInHours: parseFloat(durationInMinutes) / 60,
       practiceDate: formattedDate
     };
@@ -136,12 +135,12 @@ const DailyServings = ({ navigation, route }) => {
     try {
       const response = await api.get(`/users/me/daily-overview?date=${formattedDate}`);
 
-       setTotalCaloriesIntake(response.data.totalCaloriesIntake);
-       setTotalWaterIntake(response.data.totalWaterIntake);
-       setTotalCaloriesBurned(response.data.totalCaloriesBurned);
-       setFoodConsumptions(response.data.foodConsumptions);
-       setExerciseLogs(response.data.exerciseLogs);
-       setWaterIntakes(response.data.waterIntakes);
+      setTotalCaloriesIntake(response.data.totalCaloriesIntake);
+      setTotalWaterIntake(response.data.totalWaterIntake);
+      setTotalCaloriesBurned(response.data.totalCaloriesBurned);
+      setFoodConsumptions(response.data.foodConsumptions);
+      setExerciseLogs(response.data.exerciseLogs);
+      setWaterIntakes(response.data.waterIntakes);
     }
     catch (err) {
       console.error('Error while trying to get daily overview:', err);
@@ -181,7 +180,21 @@ const DailyServings = ({ navigation, route }) => {
   return (
     <ScrollView style={styles.container}>
       <DateSwitcher date={formattedDate} onChangeDate={changeDate} />
-      <ActivityDashboard goalCalories={goalCalories} netCalories={netCalories} />
+      <CombinedProgress netCalories={netCalories} totalWaterIntake={totalWaterIntake} />
+      <FoodConsumptionList
+        meals={meals}
+        foodConsumptions={foodConsumptions}
+        onRefresh={getDailyOverview}
+      />
+      <WaterIntakeList
+        waterIntakes={waterIntakes}
+        onRefresh={getDailyOverview}
+      />
+      <ExerciseLogList
+        exerciseLogs={exerciseLogs}
+        onRefresh={getDailyOverview}
+      />
+      {/*
       {foodConsumptionsByMeal.map(([meal, fc_list], index) => (
         <View key={index}>
           <Text>{meal.name}</Text>
@@ -202,6 +215,7 @@ const DailyServings = ({ navigation, route }) => {
         </View>
       ))}
       <View>
+        <WaterIntakeLogView waterIntakes={waterIntakes} />
         <Text>Ingestão de Água</Text>
         {waterIntakes.map((wi) => (
           <TouchableOpacity key={wi.id} onPress={() => handleOpenWaterIntakeModal(wi)}>
@@ -247,6 +261,7 @@ const DailyServings = ({ navigation, route }) => {
           onSubmit={handleSaveExerciseLogModal} 
         />
       </AddActivityModal>
+      */}
       {/*
       <FAB
         style={styles.fab}
@@ -268,7 +283,7 @@ const DailyServings = ({ navigation, route }) => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    padding: 42,
+    padding: 24,
   },
   dateContainer: {
     width: "100%",

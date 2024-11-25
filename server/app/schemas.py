@@ -129,12 +129,12 @@ class FoodRead(BaseFood):
 
 
 class WaterIntakeCreate(CamelCaseModel):
-    quantity_in_liters: float
+    quantity_in_mililiters: int
     intake_date: date
 
 
 class WaterIntakeUpdate(CamelCaseModel):
-    quantity_in_liters: Optional[float] = None
+    quantity_in_mililiters: Optional[int] = None
     intake_date: Optional[date] = None
 
 
@@ -177,6 +177,7 @@ class ExerciseLogUpdate(CamelCaseModel):
 class ExerciseLogRead(ExerciseLogCreate):
     id: int
     exercise: ExerciseRead
+    calories_burned: int
 
     class Config:
         from_attributes = True

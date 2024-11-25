@@ -2,7 +2,7 @@ import React, { useEffect } from 'react';
 import { Text } from 'react-native';
 import { CommonActions } from '@react-navigation/native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
-import Icon from 'react-native-vector-icons/MaterialIcons';
+import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
 
 import DailyServings from './DailyServings';
 import Profile from './Profile';
@@ -13,7 +13,7 @@ import { useAuth } from '../contexts/AuthContext';
 const Tab = createBottomTabNavigator();
 
 const Home = ({ navigation }) => {
-    const { updateUser } = useAuth();
+    const { user, updateUser } = useAuth();
 
     useEffect(() => {
         (async () => {
@@ -38,21 +38,31 @@ const Home = ({ navigation }) => {
         })();
     }, []);
 
+    if (!user) {
+        return null; // Retorna nada enquanto os dados do usuário são carregados
+    }
+
     return (
         <Tab.Navigator
             screenOptions={({ route }) => ({
-                tabBarIcon: ({ focused, color, size }) => {
+                tabBarIcon: ({ color }) => {
                     let iconName;
 
                     if (route.name === 'DailyServings') {
-                        iconName = 'restaurant';
+                        iconName = 'food';
                     } else if (route.name === 'Profile') {
-                        iconName = 'person';
+                        iconName = 'account';
                     }
 
-                    return <Icon name={iconName} size={size} color={color} />;
+                    return (
+                        <MaterialCommunityIcons
+                            name={iconName}
+                            size={24}
+                            color={color}
+                        />
+                    );
                 },
-                tabBarLabel: ({ focused, color }) => {
+                tabBarLabel: ({ color }) => {
                     let label;
 
                     if (route.name === 'DailyServings') {
@@ -64,6 +74,11 @@ const Home = ({ navigation }) => {
                     return <Text style={{ color }}>{label}</Text>;
                 },
                 headerShown: false,
+                tabBarStyle: {
+                    height: 50, // Reduz a altura total da TabBar
+                    paddingBottom: 0, // Reduz o espaço interno inferior
+                    paddingTop: 0,
+                },
                 tabBarActiveTintColor: '#FF6624',
                 tabBarInactiveTintColor: 'gray',
             })}
