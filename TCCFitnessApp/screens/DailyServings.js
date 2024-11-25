@@ -182,6 +182,7 @@ const DailyServings = ({ navigation, route }) => {
       <DateSwitcher date={formattedDate} onChangeDate={changeDate} />
       <CombinedProgress netCalories={netCalories} totalWaterIntake={totalWaterIntake} />
       <FoodConsumptionList
+        currentDate={formattedDate}
         meals={meals}
         foodConsumptions={foodConsumptions}
         onRefresh={getDailyOverview}

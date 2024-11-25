@@ -14,6 +14,7 @@ import AuthLoading from './screens/AuthLoading';
 import Login from './screens/Login';
 import Register from './screens/Register';
 import InitialForm from './screens/InitialForm';
+import Search from './screens/Search';
 import Summary from './screens/Summary';
 import Home from './screens/Home';
 import FoodSearchResults from './screens/FoodSearchResults';
@@ -42,6 +43,7 @@ const App = () => {
                   <Stack.Screen name='Summary' component={Summary} />
                   <Stack.Screen name='Meals' component={Meals} />
                   <Stack.Screen name="FoodSearchResults" component={FoodSearchResults} />
+                  <Stack.Screen name='Search' component={Search} />
                   <Stack.Screen name="AddFoodEntry" component={AddFoodEntry} />
                   <Stack.Screen name="EditFoodEntry" component={EditFoodEntry} />
                 </Stack.Navigator>

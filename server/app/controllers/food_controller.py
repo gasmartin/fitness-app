@@ -1,6 +1,8 @@
+from difflib import SequenceMatcher
 from typing import List, Optional, Union
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
+from sqlalchemy import func, case
 from sqlalchemy.orm import Session
 
 from app.dependencies.auth import get_current_user, get_db
@@ -32,7 +34,13 @@ async def get_foods(
     db: Session = Depends(get_db),
 ) -> List[FoodRead] | List[FoodSearch]:
     if q:
-        result = db.query(Food.id, Food.name, Food.description).filter(Food.description.ilike(f"%{q}%")).all()
+        result = db.query(Food.id, Food.name, Food.description).filter(Food.name.ilike(f"%{q}%")).all()
+
+        def similarity_score(name):
+            return SequenceMatcher(None, name.lower(), q.lower()).ratio()
+
+        result = sorted(result, key=lambda item: similarity_score(item[1]), reverse=True)
+
         return [
             {"id": id, "name": name, "description": description}
             for id, name, description in result

@@ -8,7 +8,7 @@ import FoodEntryDetails from '../components/FoodEntryDetails';
 import Loader from '../components/Loader';
 
 const AddFoodEntry = ({ navigation, route }) => {
-    const { currentDate, food_id, selectedMeal, meals } = route.params;
+    const { currentDate, foodId, selectedMeal, meals } = route.params;
 
     const [food, setFood] = useState(null);
     const [isLoading, setIsLoading] = useState(true);
@@ -24,7 +24,7 @@ const AddFoodEntry = ({ navigation, route }) => {
     useEffect(() => {
         (async () => {
             try {
-                const response = await api.get(`/foods/${food_id}`, { headers: { 'Content-Type': 'application/json' } });
+                const response = await api.get(`/foods/${foodId}`, { headers: { 'Content-Type': 'application/json' } });
                 console.log(response.data);
                 setFood(response.data);
                 setServingSize(response.data.servingSizes[0]);

@@ -7,8 +7,11 @@ import LogCard from './LogCard';
 import ExpandableButton from './ExpandableButton';
 
 import api from '../axiosConfig';
+import { useNavigation } from '@react-navigation/native';
 
-const FoodConsumptionList = ({ meals, foodConsumptions, onRefresh }) => {
+const FoodConsumptionList = ({ currentDate, meals, foodConsumptions, onRefresh, onAdd }) => {
+    const navigation = useNavigation();
+
     const [isModalVisible, setModalVisible] = useState(false);
     const [itemToDelete, setItemToDelete] = useState(null);
 
@@ -68,7 +71,7 @@ const FoodConsumptionList = ({ meals, foodConsumptions, onRefresh }) => {
                     />
                     <ExpandableButton
                         title='Adicionar comida'
-                        onPress={() => console.log(`Adicionar comida em ${meal.name}...`)}
+                        onPress={() => navigation.navigate('Search', { currentDate, meals, selectedMeal: meal })}
                     />
                 </View>
             ))}
