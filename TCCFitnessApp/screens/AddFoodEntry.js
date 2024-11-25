@@ -1,11 +1,12 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, TextInput, Keyboard, TouchableWithoutFeedback, StyleSheet, TouchableOpacity } from 'react-native';
+import { View, Text, TextInput, Keyboard, TouchableWithoutFeedback, ScrollView, StyleSheet, TouchableOpacity } from 'react-native';
 import DropDownPicker from 'react-native-dropdown-picker';
 import { CommonActions } from '@react-navigation/native';
 
-import api from '../axiosConfig';
 import FoodEntryDetails from '../components/FoodEntryDetails';
 import Loader from '../components/Loader';
+
+import api from '../axiosConfig';
 
 const AddFoodEntry = ({ navigation, route }) => {
     const { currentDate, foodId, selectedMeal, meals } = route.params;
@@ -25,7 +26,6 @@ const AddFoodEntry = ({ navigation, route }) => {
         (async () => {
             try {
                 const response = await api.get(`/foods/${foodId}`, { headers: { 'Content-Type': 'application/json' } });
-                console.log(response.data);
                 setFood(response.data);
                 setServingSize(response.data.servingSizes[0]);
                 setIsLoading(false);
@@ -49,10 +49,8 @@ const AddFoodEntry = ({ navigation, route }) => {
             servingSizeId: servingSize.id
         };
 
-        console.log(data);
-
         try {
-            await api.post('/food-consumptions/', data, { headers: { 'Content-Type': 'application/json' } })
+            await api.post('/food-consumptions/', data, { headers: { 'Content-Type': 'application/json' } });
             navigation.dispatch(
                 CommonActions.reset({
                     index: 0,
@@ -66,29 +64,26 @@ const AddFoodEntry = ({ navigation, route }) => {
     };
 
     if (isLoading) {
-        return <Loader />
+        return <Loader />;
     }
 
     return (
         <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
-            <View style={styles.container}>
+            <ScrollView contentContainerStyle={styles.scrollContainer}>
                 <View style={styles.header}>
                     <Text style={styles.headerTitle}>{food.name}</Text>
+                    <Text style={styles.headerSummary}>{food.description}</Text>
                 </View>
                 <View style={styles.body}>
                     <Text style={styles.formLabel}>Refeição:</Text>
                     <DropDownPicker
                         open={isMealDropdownOpen}
                         setOpen={setIsMealDropdownOpen}
-                        items={meals.map((meal) => ({label: meal.name, value: meal}))}
+                        items={meals.map((meal) => ({ label: meal.name, value: meal }))}
                         value={meal}
                         setValue={setMeal}
                         containerStyle={{ height: 40, marginBottom: 20 }}
                         style={styles.picker}
-                        itemStyle={{
-                            justifyContent: 'flex-start'
-                        }}
-                        dropDownStyle={{ backgroundColor: '#fafafa' }}
                         zIndex={4000}
                         zIndexInverse={1000}
                     />
@@ -96,15 +91,11 @@ const AddFoodEntry = ({ navigation, route }) => {
                     <DropDownPicker
                         open={isServingSizeDropdownOpen}
                         setOpen={setIsServingSizeDropdownOpen}
-                        items={food.servingSizes.map((ss) => ({label: ss.name, value: ss}))}
+                        items={food.servingSizes.map((ss) => ({ label: ss.name, value: ss }))}
                         value={servingSize}
                         setValue={setServingSize}
                         containerStyle={{ height: 40, marginBottom: 20 }}
                         style={styles.picker}
-                        itemStyle={{
-                            justifyContent: 'flex-start'
-                        }}
-                        dropDownStyle={{ backgroundColor: '#fafafa' }}
                         zIndex={3000}
                         zIndexInverse={1000}
                     />
@@ -119,44 +110,41 @@ const AddFoodEntry = ({ navigation, route }) => {
                 </View>
                 <View style={styles.buttonsContainer}>
                     <TouchableOpacity style={styles.primaryButton} onPress={handleAdd}>
-                        <Text style={styles.primaryButtonText}>
-                            Adicionar
-                        </Text>
+                        <Text style={styles.primaryButtonText}>Adicionar</Text>
                     </TouchableOpacity>
                     <TouchableOpacity style={styles.secondaryButton} onPress={() => navigation.goBack()}>
-                        <Text style={styles.secondaryButtonText}>
-                            Voltar
-                        </Text>
+                        <Text style={styles.secondaryButtonText}>Voltar</Text>
                     </TouchableOpacity>
                 </View>
-            </View>
+            </ScrollView>
         </TouchableWithoutFeedback>
     );
 };
 
 const styles = StyleSheet.create({
-    container: {
-        flex: 1,
-        padding: 42,
+    scrollContainer: {
+        flexGrow: 1,
+        padding: 20,
     },
     header: {
-        padding: 32,
+        padding: 20,
         flexDirection: 'column',
-        flex: 1,
-        justifyContent: 'space-around',
         alignItems: 'center',
         marginBottom: 20,
     },
     headerTitle: {
         fontSize: 28,
         fontWeight: 'bold',
+        textAlign: 'center',
+        marginBottom: 18,
     },
     headerSummary: {
-        fontSize: 18,
+        fontSize: 16,
         color: '#666',
+        textAlign: 'center',
     },
     body: {
-        flex: 3,
+        flex: 1,
     },
     picker: {
         height: 50,
@@ -178,12 +166,7 @@ const styles = StyleSheet.create({
         fontWeight: 'bold',
         fontSize: 18,
     },
-    footer: {
-        flexDirection: 'row',
-        justifyContent: 'space-around',
-    },
     buttonsContainer: {
-        flex: 1,
         width: "100%",
         justifyContent: 'space-around',
         alignItems: 'center',
@@ -193,13 +176,12 @@ const styles = StyleSheet.create({
         backgroundColor: "#FF6624",
         padding: 20,
         borderRadius: 10,
-        marginVertical: "auto",
+        marginVertical: 10,
     },
     primaryButtonText: {
         color: "#FFFFFF",
         fontSize: 20,
         textAlign: "center",
-        textTransform: "capitalize",
         fontWeight: "bold",
     },
     secondaryButton: {
@@ -207,15 +189,14 @@ const styles = StyleSheet.create({
         backgroundColor: "#B0BEC5",
         padding: 20,
         borderRadius: 10,
-        marginVertical: "auto",
+        marginVertical: 10,
     },
     secondaryButtonText: {
         color: "#FFFFFF",
         fontSize: 20,
         textAlign: "center",
-        textTransform: "capitalize",
         fontWeight: "bold",
-    }
+    },
 });
 
 export default AddFoodEntry;

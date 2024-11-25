@@ -9,7 +9,7 @@ import ExpandableButton from './ExpandableButton';
 import api from '../axiosConfig';
 import { useNavigation } from '@react-navigation/native';
 
-const FoodConsumptionList = ({ currentDate, meals, foodConsumptions, onRefresh, onAdd }) => {
+const FoodConsumptionList = ({ currentDate, meals, foodConsumptions, onRefresh }) => {
     const navigation = useNavigation();
 
     const [isModalVisible, setModalVisible] = useState(false);
@@ -50,7 +50,7 @@ const FoodConsumptionList = ({ currentDate, meals, foodConsumptions, onRefresh, 
                 title={item.food.name}
                 subtitle={descriptionWithoutName}
                 extraInfo={`${item.calories} kcal`}
-                onPress={() => console.log(`Edit Food Consumption ID: ${item.id}`)}
+                onPress={() => navigation.navigate('EditFoodEntry', { meals, foodConsumption: item })}
                 iconColor='#FF6624'
                 iconBackgroundColor='#FFE6D5'
                 onDelete={() => confirmDelete(item)}

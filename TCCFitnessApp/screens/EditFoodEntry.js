@@ -1,16 +1,16 @@
 import React, { useState } from 'react';
 import { Button, Text, TextInput, View, StyleSheet, TouchableOpacity, Keyboard, TouchableWithoutFeedback } from 'react-native';
 import DropDownPicker from 'react-native-dropdown-picker';
+import { CommonActions } from '@react-navigation/native';
 
 import FoodEntryDetails from '../components/FoodEntryDetails';
 
 import api from '../axiosConfig';
-import { CommonActions } from '@react-navigation/native';
 
 const EditFoodEntry = ({ navigation, route }) => {
-    const { selectedMeal, meals, foodConsumption } = route.params;
+    const { meals, foodConsumption } = route.params;
 
-    const [meal, setMeal] = useState(selectedMeal);
+    const [meal, setMeal] = useState(meals.find((meal) => meal.id === foodConsumption.meal.id));
     const [isMealDropdownOpen, setIsMealDropdownOpen] = useState(false);
 
     const [servingSize, setServingSize] = useState(foodConsumption.servingSize);

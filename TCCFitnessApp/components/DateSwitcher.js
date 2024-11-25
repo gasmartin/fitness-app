@@ -4,37 +4,26 @@ import { StyleSheet, Text, View } from 'react-native';
 import Button from './Button';
 
 const DateSwitcher = ({ date, onChangeDate }) => {
-  // Formata a data para o formato dd/mm/yyyy
   const formatDate = (date) => {
-    const formattedDate = new Date(date);
-    const day = String(formattedDate.getDate()).padStart(2, '0');
-    const month = String(formattedDate.getMonth() + 1).padStart(2, '0'); // Janeiro é 0
-    const year = formattedDate.getFullYear();
+    const day = String(date.getDate()).padStart(2, '0');
+    const month = String(date.getMonth() + 1).padStart(2, '0'); // Janeiro é 0
+    const year = date.getFullYear();
     return `${day}/${month}/${year}`;
   };
 
   return (
     <View style={styles.container}>
-      {/* Botão para a data anterior */}
       <Button
         title="←"
         onPress={() => onChangeDate(-1)}
         style={styles.button}
         textStyle={styles.buttonText}
       />
-      
-      {/* Espaço entre o botão esquerdo e a data */}
       <View style={styles.spacer} />
-
-      {/* Visualizador da data */}
       <View style={styles.dateViewer}>
         <Text style={styles.dateText}>{formatDate(date)}</Text>
       </View>
-
-      {/* Espaço entre a data e o botão direito */}
       <View style={styles.spacer} />
-
-      {/* Botão para a próxima data */}
       <Button
         title="→"
         onPress={() => onChangeDate(1)}

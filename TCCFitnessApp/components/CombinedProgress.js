@@ -1,7 +1,7 @@
 import React from 'react';
-import { View, Text, StyleSheet } from 'react-native';
-import { ProgressBar } from 'react-native-paper'; // Biblioteca para barra de progresso
+import { StyleSheet, Text, View } from 'react-native';
 import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
+import * as Progress from 'react-native-progress';
 import { useAuth } from '../contexts/AuthContext';
 
 const ProgressCard = ({ icon, color, title, progress }) => {
@@ -10,7 +10,14 @@ const ProgressCard = ({ icon, color, title, progress }) => {
       <MaterialCommunityIcons name={icon} size={36} color={color} />
       <View style={styles.textContainer}>
         <Text style={styles.title}>{title}</Text>
-        <ProgressBar progress={progress} color={color} style={styles.progressBar} />
+        <Progress.Bar 
+          progress={progress} 
+          width={null}
+          height={10}
+          color={color}
+          borderRadius={5}
+          style={styles.progressBar}
+        />
         <Text style={styles.percentage}>{Math.round(progress * 100)}%</Text>
       </View>
     </View>
