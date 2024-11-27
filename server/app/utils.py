@@ -82,6 +82,14 @@ def populate_database():
             lipids=food_item.get("lipids"),
         )
 
+        food.serving_sizes.append(ServingSize(
+            name="100g",
+            calories=food_item.get("kcal"),
+            carbohydrates=food_item.get("carbohydrates"),
+            proteins=food_item.get("protein"),
+            lipids=food_item.get("lipids"),
+        ))
+
         for serving_size_item in food_item.get("portions", []):
             serving_size = ServingSize(
                 name=serving_size_item["name"],

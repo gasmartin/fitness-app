@@ -95,6 +95,7 @@ café da manhã, almoço, lanche da tarde e jantar.
 
 Exemplo de entrada:
 Objetivo: Perder peso
+TDEE (Total Daily Energy Expenditure): 2000 kcal
 Objetivo de calorias: 1500 kcal
 Data: 20/11/2024
 Total de calorias ingeridas: 735 kcal

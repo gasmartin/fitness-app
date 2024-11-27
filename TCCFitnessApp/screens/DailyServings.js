@@ -12,26 +12,22 @@ import CombinedProgress from '../components/CombinedProgress';
 import FoodConsumptionList from '../components/FoodComsuptionList';
 import WaterIntakeList from '../components/WaterIntakeList';
 import ExerciseLogList from '../components/ExerciseLogList';
+import ReportModal from '../components/ReportModal';
 
 const DailyServings = ({ navigation, route }) => {
   const [refreshing, setRefreshing] = useState(false);
   const { currentDate, setCurrentDate } = useContext(CurrentDateContext);
 
   const [meals, setMeals] = useState([]);
-
   const [totalCaloriesIntake, setTotalCaloriesIntake] = useState(0);
   const [totalWaterIntake, setTotalWaterIntake] = useState(0);
   const [totalCaloriesBurned, setTotalCaloriesBurned] = useState(0);
   const [foodConsumptions, setFoodConsumptions] = useState([]);
   const [waterIntakes, setWaterIntakes] = useState([]);
   const [exerciseLogs, setExerciseLogs] = useState([]);
-
-  const [isWaterIntakeModalVisible, setIsWaterIntakeModalVisible] = useState(false);
-  const [selectedWaterIntake, setSelectedWaterIntake] = useState(null);
+  const [isReportModalVisible, setIsReportModalVisible] = useState(false);
 
   const formattedDate = format(currentDate, 'yyyy-MM-dd');
-
-  const netCalories = totalCaloriesIntake - totalCaloriesBurned;
 
   const getMeals = async () => {
     try {
@@ -68,14 +64,6 @@ const DailyServings = ({ navigation, route }) => {
     getDailyOverview();
   }, [currentDate]);
 
-  useEffect(() => {
-    if (selectedWaterIntake) {
-      setIsWaterIntakeModalVisible(true);
-    } else if (!isWaterIntakeModalVisible) {
-      setSelectedWaterIntake(null);
-    }
-  }, [selectedWaterIntake, isWaterIntakeModalVisible]);
-
   useFocusEffect(
     useCallback(() => {
       if (route.params?.shouldRefresh) {
@@ -89,16 +77,11 @@ const DailyServings = ({ navigation, route }) => {
     setCurrentDate(addDays(currentDate, days));
   };
 
-  const handleVerifyAction = () => {
-    console.log('Verify action triggered!');
-    // Add your verification logic here
-  };
-
   return (
     <>
       <ScrollView style={styles.container} refreshControl={<RefreshControl refreshing={refreshing} onRefresh={getDailyOverview} tintColor='#FF6624' />}>
         <DateSwitcher date={currentDate} onChangeDate={changeDate} />
-        <CombinedProgress netCalories={netCalories} totalWaterIntake={totalWaterIntake} />
+        <CombinedProgress totalCaloriesIntake={totalCaloriesIntake} totalWaterIntake={totalWaterIntake} />
         <FoodConsumptionList
           currentDate={formattedDate}
           meals={meals}
@@ -120,7 +103,12 @@ const DailyServings = ({ navigation, route }) => {
         style={styles.fab}
         icon='playlist-check'
         color='#FFF'
-        onPress={handleVerifyAction}
+        onPress={() => setIsReportModalVisible(true)}
+      />
+      <ReportModal 
+        isVisible={isReportModalVisible}
+        onClose={() => setIsReportModalVisible(false)}
+        currentDate={formattedDate}
       />
     </>
   );

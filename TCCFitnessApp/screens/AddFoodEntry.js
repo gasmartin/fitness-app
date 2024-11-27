@@ -20,7 +20,7 @@ const AddFoodEntry = ({ navigation, route }) => {
     const [servingSize, setServingSize] = useState(food?.servingSizes[0] || null);
     const [isServingSizeDropdownOpen, setIsServingSizeDropdownOpen] = useState(false);
 
-    const [quantity, setQuantity] = useState("0");
+    const [quantity, setQuantity] = useState("0"); // Valor inicial no padrão BR
 
     useEffect(() => {
         (async () => {
@@ -29,20 +29,29 @@ const AddFoodEntry = ({ navigation, route }) => {
                 setFood(response.data);
                 setServingSize(response.data.servingSizes[0]);
                 setIsLoading(false);
-            }
-            catch (err) {
+            } catch (err) {
                 console.error('Error while trying to get food:', err);
             }
         })();
     }, []);
 
+    const formatToBR = (input) => {
+        // Remove caracteres inválidos
+        let validatedInput = input.replace(/[^0-9,]/g, '');
+        // Garante que apenas uma vírgula exista
+        validatedInput = validatedInput.replace(/,/g, (match, offset) => (offset === validatedInput.indexOf(',') ? ',' : ''));
+        return validatedInput;
+    };
+
     const convertToNumber = (input) => {
-        return parseFloat(parseFloat(input.replace(',', '.')).toFixed(1));
-    }
+        // Substitui vírgula por ponto e converte para número
+        const formattedInput = input.replace(',', '.');
+        return parseFloat(formattedInput) || 0;
+    };
 
     const handleAdd = async () => {
         const data = {
-            quantity: convertToNumber(quantity),
+            quantity: convertToNumber(quantity), // Envia para o backend como número
             consumptionDate: currentDate,
             foodId: food.id,
             mealId: meal.id,
@@ -57,8 +66,7 @@ const AddFoodEntry = ({ navigation, route }) => {
                     routes: [{ name: 'Home', params: { shouldRefresh: true } }]
                 })
             );
-        }
-        catch (err) {
+        } catch (err) {
             console.error('Error while trying to create food consumption:', err);
         }
     };
@@ -102,11 +110,11 @@ const AddFoodEntry = ({ navigation, route }) => {
                     <Text style={styles.formLabel}>Quantidade da porção:</Text>
                     <TextInput
                         value={quantity}
-                        onChangeText={setQuantity}
+                        onChangeText={(text) => setQuantity(formatToBR(text))}
                         keyboardType="numeric"
                         style={styles.input}
                     />
-                    <FoodEntryDetails quantity={quantity} servingSize={servingSize} />
+                    <FoodEntryDetails quantity={convertToNumber(quantity)} servingSize={servingSize} />
                 </View>
                 <View style={styles.buttonsContainer}>
                     <TouchableOpacity style={styles.primaryButton} onPress={handleAdd}>

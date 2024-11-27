@@ -8,8 +8,6 @@ import api from '../axiosConfig';
 const Search = ({ navigation, route }) => {
     const { currentDate, selectedMeal, meals } = route.params;
 
-    console.log(selectedMeal.name);
-
     const [searchQuery, setSearchQuery] = useState('');
     const [filteredResults, setFilteredResults] = useState([]);
     const [debounceTimeout, setDebounceTimeout] = useState(null);

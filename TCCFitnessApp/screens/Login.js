@@ -11,7 +11,7 @@ import {
 } from 'react-native';
 import { useAuth } from '../contexts/AuthContext';
 
-import Button from '../components/Button';
+import ExpandableButton from '../components/ExpandableButton';
 
 const Login = ({ navigation }) => {
     const emailInput = useRef(null);
@@ -80,7 +80,11 @@ const Login = ({ navigation }) => {
                     </View>
                 </View>
                 <View style={styles.action}>
-                    <Button title="Fazer login" onPress={handleLogin} />
+                    <TouchableOpacity style={styles.button} onPress={handleLogin}>
+                        <Text style={styles.buttonText}>
+                            Fazer login
+                        </Text>
+                    </TouchableOpacity>
                     <TouchableOpacity>
                         <Text style={{ fontSize: 16, fontWeight: 'bold' }} onPress={handleRegister}>
                             Ainda não possui uma conta?{" "}

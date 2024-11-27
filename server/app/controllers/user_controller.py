@@ -286,9 +286,8 @@ async def get_user_daily_report(
     current_user: UserRead = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
+    meals = await get_user_meals(current_user, db)
     daily_overview = await get_user_daily_overview(date, current_user, db)
-
-    print(daily_overview)
 
     if current_user.goal_type is Goals.LOSE_WEIGHT:
         prompt = 'Objetivo: Perder peso\n'
@@ -297,21 +296,29 @@ async def get_user_daily_report(
     else:
         prompt = 'Objetivo: Ganhar peso\n'
     
-    prompt += f'Objetivo de calorias: {current_user.goal_calories} kcal'
+    prompt += f'TDEE (Total Daily Energy Expenditure): {current_user.tdee} kcal\n'
+    prompt += f'Calorias para atingir o objetivo: {current_user.goal_calories} kcal\n'
     prompt += f'Data: {date.strftime(r"%d/%m/%Y")}\n'
-    prompt += f'Total de calorias ingeridas: {daily_overview["total_calories_intake"]} kcal'
-    prompt += f'Total de ingestão de água: {daily_overview["total_water_intake"]} L'
-    prompt += f'Total de calorias queimadas: {daily_overview["total_calories_burned"]} kcal'
+    prompt += f'Total de calorias ingeridas: {daily_overview["total_calories_intake"]} kcal\n'
+    prompt += f'Total de ingestão de água: {daily_overview["total_water_intake"]} ml\n'
+    prompt += f'Total de calorias queimadas: {daily_overview["total_calories_burned"]} kcal\n\n'
 
     # TODO: Colocar as refeições no prompt
+    for meal in meals:
+        prompt += f"{meal.name}:\n"
+        for food_consumption in filter(lambda fc: fc.meal.id == meal.id, daily_overview["food_consumptions"]):
+            prompt += f"    - Nome: {food_consumption.food.description} / Porção: {food_consumption.serving_size.name} / Quantidade: {food_consumption.quantity} / Calorias: {food_consumption.calories} kcal \n"
+        prompt += "\n"
+
+    print(prompt)
 
     response = client.chat.completions.create(
-        model="gpt-3.5-turbo",
+        model="gpt-4o-mini",
         messages=[
             {"role": "system", "content": OPENAI_SYSTEM_PROMPT},
-            {"role": "user", "content": EXAMPLE_CONTENT},
+            {"role": "user", "content": prompt},
         ],
-        temperature=0.7,
+        temperature=0.5,
         max_tokens=512,
     )
 

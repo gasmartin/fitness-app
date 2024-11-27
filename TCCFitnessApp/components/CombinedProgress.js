@@ -24,14 +24,14 @@ const ProgressCard = ({ icon, color, title, progress }) => {
   );
 };
 
-const CombinedProgress = ({ netCalories, totalWaterIntake }) => {
+const CombinedProgress = ({ totalCaloriesIntake, totalWaterIntake }) => {
   const { user } = useAuth();
 
   if (!user || !user.weight || !user.goalCalories) {
     return <Text>Carregando informações do usuário...</Text>;
   }
 
-  const caloriesProgress = Math.max(0, Math.min(1, parseFloat((netCalories / user.goalCalories || 0).toFixed(2))));
+  const caloriesProgress = Math.max(0, Math.min(1, parseFloat((totalCaloriesIntake / user.goalCalories || 0).toFixed(2))));
   const waterProgress = Math.min(1, totalWaterIntake / (user.weight * 35));
 
   return (

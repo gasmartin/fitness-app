@@ -2,7 +2,8 @@ import React, { useRef, useState } from 'react';
 import { ActivityIndicator, Keyboard, StyleSheet, Text, TextInput, TouchableOpacity, TouchableWithoutFeedback, View } from 'react-native';
 
 import api from '../axiosConfig';
-import { setToken } from '../helpers/token';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { CommonActions } from '@react-navigation/native';
 
 const Register = ({ navigation }) => {
     const nameInput = useRef(null);
@@ -36,9 +37,17 @@ const Register = ({ navigation }) => {
                 email,
                 password,
             });
-            const { access_token: accessToken } = response.data;
-            await setToken(accessToken);
-            navigation.replace("Home");
+            const { accessToken, refreshToken } = response.data;
+
+            await AsyncStorage.setItem('accessToken', accessToken);
+            await AsyncStorage.setItem('refreshToken', refreshToken);
+
+            navigation.dispatch(
+                CommonActions.reset({
+                    index: 0,
+                    routes: [{ name: "Home" }],
+                })
+            );
         }
         catch (error) {
             console.error(error);

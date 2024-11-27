@@ -9,6 +9,7 @@ const AuthContext = createContext(null);
 export const AuthProvider = ({ children }) => {
     const [user, setUser] = useState(null);
     const [loading, setLoading] = useState(true);
+    const [isAuthenticated, setIsAuthenticated] = useState(false);
 
     useEffect(() => {
         (async () => {
@@ -16,11 +17,13 @@ export const AuthProvider = ({ children }) => {
 
             if (userData) {
                 setUser(JSON.parse(userData));
+                setIsAuthenticated(true); // Usuário autenticado
             }
             else {
                 try {
                     const response = await api.get('/users/me', { headers: { 'Content-Type': 'application/json' } });
                     updateUser(response.data);
+                    setIsAuthenticated(true); // Usuário autenticado
                 }
                 catch (err) {
                     console.error('Error while trying to get user info:', err);
@@ -57,6 +60,8 @@ export const AuthProvider = ({ children }) => {
         await AsyncStorage.setItem('accessToken', accessToken);
         await AsyncStorage.setItem('refreshToken', refreshToken);
 
+        setIsAuthenticated(true); // Atualiza estado após login bem-sucedido
+
         navigationRef.dispatch(
             CommonActions.reset({
                 index: 0,
@@ -67,6 +72,7 @@ export const AuthProvider = ({ children }) => {
 
     const logout = async () => {
         await AsyncStorage.clear();
+        setIsAuthenticated(false); // Atualiza estado após logout
 
         navigationRef.dispatch(
             CommonActions.reset({
@@ -77,7 +83,7 @@ export const AuthProvider = ({ children }) => {
     };
 
     return (
-        <AuthContext.Provider value={{ user, loading, login, logout, updateUser }}>
+        <AuthContext.Provider value={{ user, loading, isAuthenticated, login, logout, updateUser }}>
             { children }
         </AuthContext.Provider>
     );

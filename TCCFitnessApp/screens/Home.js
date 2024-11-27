@@ -18,7 +18,7 @@ const Home = ({ navigation }) => {
     useEffect(() => {
         (async () => {
             try {
-                const response = await api.get(`/users/me`);
+                const response = await api.get('/users/me');
                 await updateUser(response.data);
 
                 const { hasPhysiologyInformation } = response.data;
@@ -39,7 +39,7 @@ const Home = ({ navigation }) => {
     }, []);
 
     if (!user) {
-        return null; // Retorna nada enquanto os dados do usuário são carregados
+        return null;
     }
 
     return (

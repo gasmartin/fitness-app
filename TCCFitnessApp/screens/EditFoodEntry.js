@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Button, Text, TextInput, View, StyleSheet, TouchableOpacity, Keyboard, TouchableWithoutFeedback } from 'react-native';
+import { View, Text, TextInput, Keyboard, TouchableWithoutFeedback, ScrollView, StyleSheet, TouchableOpacity } from 'react-native';
 import DropDownPicker from 'react-native-dropdown-picker';
 import { CommonActions } from '@react-navigation/native';
 
@@ -16,14 +16,29 @@ const EditFoodEntry = ({ navigation, route }) => {
     const [servingSize, setServingSize] = useState(foodConsumption.servingSize);
     const [isServingSizeDropdownOpen, setIsServingSizeDropdownOpen] = useState(false);
 
-    const [quantity, setQuantity] = useState(foodConsumption.quantity.toString());
+    // Inicializa a quantidade com o formato brasileiro
+    const [quantity, setQuantity] = useState(foodConsumption.quantity.toString().replace('.', ','));
+
+    const formatToBR = (input) => {
+        // Remove caracteres inválidos e garante apenas números e vírgula
+        let validatedInput = input.replace(/[^0-9,]/g, '');
+        // Garante que apenas uma vírgula seja usada como separador decimal
+        validatedInput = validatedInput.replace(/,/g, (match, offset) => (offset === validatedInput.indexOf(',') ? ',' : ''));
+        return validatedInput;
+    };
+
+    const convertToNumber = (input) => {
+        // Substitui vírgula por ponto para conversão numérica
+        const formattedInput = input.replace(',', '.');
+        return parseFloat(formattedInput) || 0; // Retorna 0 se a entrada for inválida
+    };
 
     const handleSave = async () => {
         const data = {
-            quantity,
+            quantity: convertToNumber(quantity), // Envia o valor no formato numérico para o backend
             mealId: meal.id,
             servingSizeId: servingSize.id
-        }
+        };
 
         try {
             await api.put(`/food-consumptions/${foodConsumption.id}`, data, { headers: { 'Content-Type': 'application/json' } });
@@ -33,54 +48,37 @@ const EditFoodEntry = ({ navigation, route }) => {
                     routes: [{ name: 'Home', params: { shouldRefresh: true } }]
                 })
             );
-        }
-        catch (error) {
-            console.log(error);
-        }
-    };
-
-    const handleDelete = async () => {
-        try {
-            await api.delete(`/food-consumptions/${foodConsumption.id}`);
-            navigation.goBack();
-        }
-        catch (error) {
+        } catch (error) {
             console.log(error);
         }
     };
 
     const handleCancel = () => {
-        navigation.goBack()
+        navigation.goBack();
     };
 
     const servingSizeDropdownItems = [
-        servingSize, ...foodConsumption.food.servingSizes.filter((ss) => ss.id != servingSize.id)
-    ].map((ss) => ({label: ss.name, value: ss}));
-
-    console.log(servingSizeDropdownItems);
+        servingSize,
+        ...foodConsumption.food.servingSizes.filter((ss) => ss.id !== servingSize.id),
+    ].map((ss) => ({ label: ss.name, value: ss }));
 
     return (
         <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
-            <View style={styles.container}>
+            <ScrollView contentContainerStyle={styles.scrollContainer}>
                 <View style={styles.header}>
-                    <Text style={styles.headerTitle}>
-                        {foodConsumption.food.name}
-                    </Text>
+                    <Text style={styles.headerTitle}>{foodConsumption.food.name}</Text>
+                    <Text style={styles.headerSummary}>{foodConsumption.food.description}</Text>
                 </View>
                 <View style={styles.body}>
                     <Text style={styles.formLabel}>Refeição:</Text>
                     <DropDownPicker
                         open={isMealDropdownOpen}
                         setOpen={setIsMealDropdownOpen}
+                        items={meals.map((meal) => ({ label: meal.name, value: meal }))}
                         value={meal}
-                        items={meals.map((meal) => ({label: meal.name, value: meal}))}
                         setValue={setMeal}
                         containerStyle={{ height: 40, marginBottom: 20 }}
                         style={styles.picker}
-                        itemStyle={{
-                            justifyContent: 'flex-start'
-                        }}
-                        dropDownStyle={{ backgroundColor: '#fafafa' }}
                         zIndex={4000}
                         zIndexInverse={1000}
                     />
@@ -88,75 +86,60 @@ const EditFoodEntry = ({ navigation, route }) => {
                     <DropDownPicker
                         open={isServingSizeDropdownOpen}
                         setOpen={setIsServingSizeDropdownOpen}
-                        value={servingSize}
                         items={servingSizeDropdownItems}
+                        value={servingSize}
                         setValue={setServingSize}
                         containerStyle={{ height: 40, marginBottom: 20 }}
                         style={styles.picker}
-                        itemStyle={{
-                            justifyContent: 'flex-start'
-                        }}
-                        dropDownStyle={{ backgroundColor: '#fafafa' }}
                         zIndex={3000}
                         zIndexInverse={1000}
                     />
-                    <Text style={styles.formLabel}>Quantidade:</Text>
+                    <Text style={styles.formLabel}>Quantidade da porção:</Text>
                     <TextInput
                         value={quantity}
-                        onChangeText={setQuantity}
+                        onChangeText={(text) => setQuantity(formatToBR(text))}
                         keyboardType="numeric"
                         style={styles.input}
                     />
-                    <FoodEntryDetails quantity={quantity} servingSize={servingSize} />
+                    <FoodEntryDetails quantity={convertToNumber(quantity)} servingSize={servingSize} />
                 </View>
                 <View style={styles.buttonsContainer}>
-                    <TouchableOpacity style={styles.buttonSave} onPress={handleSave}>
-                        <Text style={styles.buttonText}>
-                            Salvar
-                        </Text>
+                    <TouchableOpacity style={styles.primaryButton} onPress={handleSave}>
+                        <Text style={styles.primaryButtonText}>Salvar</Text>
                     </TouchableOpacity>
-                    <TouchableOpacity style={styles.buttonRemove} onPress={handleDelete}>
-                        <Text style={styles.buttonText}>
-                            Remover
-                        </Text>
+                    <TouchableOpacity style={styles.secondaryButton} onPress={handleCancel}>
+                        <Text style={styles.secondaryButtonText}>Cancelar</Text>
                     </TouchableOpacity>
-                    <View>
-                        <Button title="Cancelar" onPress={handleCancel} />
-                    </View>
-                    {/* <TouchableOpacity style={styles.buttonCancel} onPress={handleCancel}>
-                        <Text style={styles.buttonText}>
-                            Cancelar
-                        </Text>
-                    </TouchableOpacity> */}
                 </View>
-            </View>
+            </ScrollView>
         </TouchableWithoutFeedback>
     );
 };
 
 const styles = StyleSheet.create({
-    container: {
-        flex: 1,
-        padding: 42,
+    scrollContainer: {
+        flexGrow: 1,
+        padding: 20,
     },
     header: {
-        padding: 32,
+        padding: 20,
         flexDirection: 'column',
-        flex: 2,
-        justifyContent: 'space-around',
         alignItems: 'center',
         marginBottom: 20,
     },
     headerTitle: {
         fontSize: 28,
         fontWeight: 'bold',
+        textAlign: 'center',
+        marginBottom: 18,
     },
     headerSummary: {
-        fontSize: 18,
+        fontSize: 16,
         color: '#666',
+        textAlign: 'center',
     },
     body: {
-        flex: 7,
+        flex: 1,
     },
     picker: {
         height: 50,
@@ -178,43 +161,36 @@ const styles = StyleSheet.create({
         fontWeight: 'bold',
         fontSize: 18,
     },
-    footer: {
-        flexDirection: 'row',
-        justifyContent: 'space-around',
-    },
     buttonsContainer: {
-        flex: 3,
         width: "100%",
         justifyContent: 'space-around',
         alignItems: 'center',
     },
-    buttonSave: {
+    primaryButton: {
         width: "100%",
         backgroundColor: "#FF6624",
         padding: 20,
         borderRadius: 10,
-        marginVertical: "auto",
+        marginVertical: 10,
     },
-    buttonText: {
+    primaryButtonText: {
         color: "#FFFFFF",
         fontSize: 20,
         textAlign: "center",
-        textTransform: "capitalize",
         fontWeight: "bold",
     },
-    buttonRemove: {
-        width: "100%",
-        backgroundColor: "#FF0000",
-        padding: 20,
-        borderRadius: 10,
-        marginVertical: "auto",
-    },
-    buttonCancel: {
+    secondaryButton: {
         width: "100%",
         backgroundColor: "#B0BEC5",
         padding: 20,
         borderRadius: 10,
-        marginVertical: "auto",
+        marginVertical: 10,
+    },
+    secondaryButtonText: {
+        color: "#FFFFFF",
+        fontSize: 20,
+        textAlign: "center",
+        fontWeight: "bold",
     },
 });
 

@@ -7,7 +7,6 @@ import DropDownPicker from 'react-native-dropdown-picker';
 import api from '../axiosConfig';
 
 const InitialForm = ({ navigation }) => {
-    const genderInputRef = useRef(null);
     const ageInputRef = useRef(null);
     const heightInputRef = useRef(null);
     const weightInputRef = useRef(null);
@@ -18,6 +17,12 @@ const InitialForm = ({ navigation }) => {
 
     const [isActivityLevelDropdownOpen, setIsActivityLevelDropdownOpen] = useState(false);
     const [isGoalTypeDropdownOpen, setIsGoalTypeDropdownOpen] = useState(false);
+
+    const parseWeight = (weight) => {
+        let normalized = weight.replace(',', '.');
+        normalized = normalized.replace(/(\..*?)\./g, '$1');
+        return parseFloat(normalized);
+    };
 
     const handleContinue = async () => {
         const age = ageInputRef.current.value;
@@ -41,7 +46,7 @@ const InitialForm = ({ navigation }) => {
             gender,
             age: parseInt(age),
             height: parsedHeight,
-            weight: parseFloat(weight),
+            weight: parseWeight(weight),
             activityLevel,
             goalType,
         };
@@ -49,14 +54,14 @@ const InitialForm = ({ navigation }) => {
         try {
             const response = await api.put(`/users/me`, { ...userInfo });
 
-            const { goalCalories, goalType  } = response.data;
+            const { goalCalories, goalType } = response.data;
 
             navigation.dispatch(CommonActions.reset({ index: 0, routes: [{ name: 'Summary', params: { goalCalories, goalType } }] }));
         }
         catch (err) {
             console.log(err);
         }
-        
+
         navigate("Summary", { userInfo });
     };
 
@@ -130,7 +135,7 @@ const InitialForm = ({ navigation }) => {
                             style={styles.smallInput}
                             keyboardType="numeric"
                             placeholder="kg"
-                            maxLength={3}
+                            maxLength={5}
                             ref={weightInputRef}
                             onChangeText={(e) => weightInputRef.current.value = e}
                         />

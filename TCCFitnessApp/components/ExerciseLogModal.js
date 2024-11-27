@@ -4,8 +4,11 @@ import DropDownPicker from 'react-native-dropdown-picker';
 
 import api from '../axiosConfig';
 import Button from './Button';
+import { useAuth } from '../contexts/AuthContext';
 
 const ExerciseLogModal = ({ visible, onClose, initialSelectedExerciseId, initialDuration, onSubmit, isEditing }) => {
+    const { isAuthenticated } = useAuth();
+    
     const [exercises, setExercises] = useState([]);
     const [isExerciseDropdownOpen, setIsExerciseDropdownOpen] = useState(false);
 
@@ -13,6 +16,8 @@ const ExerciseLogModal = ({ visible, onClose, initialSelectedExerciseId, initial
     const [duration, setDuration] = useState(String(initialDuration || ''));
 
     useEffect(() => {
+        if (!isAuthenticated) return;
+
         (async () => {
             try {
                 const response = await api.get('/exercises/');
@@ -22,7 +27,7 @@ const ExerciseLogModal = ({ visible, onClose, initialSelectedExerciseId, initial
                 console.error('Error while trying to get exercises:', err);
             }
         })();
-    }, []);
+    }, [isAuthenticated]);
 
     useEffect(() => {
         if (exercises.length > 0) {

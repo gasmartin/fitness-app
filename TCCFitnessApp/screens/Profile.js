@@ -1,33 +1,48 @@
-import React, { useContext, useState } from 'react';
-import { Keyboard, Text, TextInput, TouchableOpacity, TouchableWithoutFeedback, StyleSheet, View } from 'react-native';
+import React, { useEffect, useState } from 'react';
+import { ActivityIndicator, Keyboard, Text, TextInput, TouchableOpacity, TouchableWithoutFeedback, StyleSheet, View } from 'react-native';
 
 import api from '../axiosConfig';
-import { removeToken } from '../helpers/token';
-import { UserContext } from '../contexts/UserContext';
+import { useAuth } from '../contexts/AuthContext';
 
 const Profile = ({ navigation }) => {
-    const { user, setUser } = useContext(UserContext);
-    const [weight, setWeight] = useState(user.weight.toFixed(1).toString());
+    const { logout, user, updateUser } = useAuth();
+
+    const [weight, setWeight] = useState('');
+    const [isLoading, setIsLoading] = useState(false);
+
+    const formatToBrazilian = (value) => {
+        const numericValue = value.replace(/[^0-9,]/g, '');
+        return numericValue;
+    };
 
     const parseWeight = (weight) => {
-        return parseFloat(weight?.replace(',', '.')).toFixed(1);
-    }
+        return parseFloat(weight.replace(',', '.'));
+    };
+
+    const handleWeightChange = (text) => {
+        const formattedWeight = formatToBrazilian(text);
+        setWeight(formattedWeight);
+    };
 
     const handleSave = async () => {
+        setIsLoading(true);
         try {
-            const response = await api.put('/users/', { weight: parseWeight(weight) });
-            setUser(response.data);
-            setWeight(response.data.weight.toFixed(1).toString());
-        }
-        catch (error) {
-            console.log("Error saving");
+            const response = await api.put('/users/me', { weight: parseWeight(weight) }, { headers: { 'Content-Type': 'application/json' } });
+            const updatedUser = response.data;
+            updateUser(updatedUser);
+            setWeight(updatedUser?.weight?.toFixed(1).replace('.', ',') || '');
+        } catch (error) {
+            console.log("Error saving:", error);
+        } finally {
+            setIsLoading(false);
         }
     };
 
-    const handleLogout = async () => {
-        await removeToken();
-        navigation.navigate("AuthLoading");
-    };
+    useEffect(() => {
+        if (user) {
+            setWeight(user?.weight ? user.weight.toFixed(1).replace('.', ',') : '');
+        }
+    }, [user]);
 
     return (
         <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
@@ -39,20 +54,26 @@ const Profile = ({ navigation }) => {
                     <TextInput
                         style={styles.editWeightFormInput}
                         value={weight}
-                        onChangeText={setWeight}
+                        onChangeText={handleWeightChange}
                         keyboardType="numeric"
+                        placeholder='Ex: 70,5'
+                        editable={!isLoading}
                     />
                     <TouchableOpacity
-                        style={[styles.saveButton, { opacity: user.weight == weight ? 0.5 : 1 }]}
+                        style={[styles.saveButton, { opacity: user?.weight?.toFixed(1).replace('.', ',') === weight ? 0.5 : 1 }]}
                         onPress={handleSave}
-                        disabled={user.weight == weight}
+                        disabled={user?.weight?.toFixed(1).replace('.', ',') === weight}
                     >
-                        <Text style={styles.saveButtonText}>
-                            Salvar
-                        </Text>
+                        {isLoading ? (
+                            <ActivityIndicator size='small' color='#FF6624' />
+                        ) : (
+                            <Text style={styles.saveButtonText}>
+                                Salvar
+                            </Text>
+                        )}
                     </TouchableOpacity>
                 </View>
-                <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>
+                <TouchableOpacity style={styles.logoutButton} onPress={logout}>
                     <Text style={styles.logoutButtonText}>Logout</Text>
                 </TouchableOpacity>
             </View>

@@ -1,16 +1,14 @@
 import * as React from 'react';
-import { Platform, StatusBar, SafeAreaView, StyleSheet, View, Text } from 'react-native';
+import { StatusBar, SafeAreaView, StyleSheet } from 'react-native';
 import { NavigationContainer } from '@react-navigation/native';
 import { createStackNavigator } from '@react-navigation/stack';
 import { enableScreens } from 'react-native-screens';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 
 import { CurrentDateProvider } from './contexts/CurrentDateContext';
-import { UserProvider } from './contexts/UserContext';
 import { AuthProvider } from './contexts/AuthContext';
 import { navigationRef } from './NavigationService';
 
-import AuthLoading from './screens/AuthLoading';
 import Login from './screens/Login';
 import Register from './screens/Register';
 import InitialForm from './screens/InitialForm';
@@ -29,7 +27,6 @@ const Stack = createStackNavigator();
 const App = () => {
   return (
     <SafeAreaProvider>
-      <UserProvider>
         <CurrentDateProvider>
           <AuthProvider>
             <StatusBar barStyle='dark-content' backgroundColor='#FFFFFF' translucent={true} />
@@ -51,7 +48,6 @@ const App = () => {
             </SafeAreaView>
           </AuthProvider>
         </CurrentDateProvider>
-      </UserProvider>
     </SafeAreaProvider>
   );
 };
